@@ -1,0 +1,28 @@
+Failed to execute selectOption on agent-f1-27: locator.fill: Error: Element is not an <input>, <textarea> or [contenteditable] element
+Call log:
+[2m  - waiting for locator('[data-arf-id="agent-f1-27"]').first()[22m
+[2m    - locator resolved to <a tabindex="0" role="combobox" aria-expanded="true" aria-required="true" aria-label="Country" data-arf-id="agent-f1-27" autocomplete="country-name" class="dropdown-select focus" id="-1_PersonProfileFields.AddressCountry_icimsDropdown" aria-labelledby="label_-1_PersonProfileFields.AddressCountry">…</a>[22m
+[2m    - fill("")[22m
+[2m  - attempting fill action[22m
+[2m    - waiting for element to be visible, enabled and editable[22m
+
+Failed to execute selectOption on agent-f1-26: locator.fill: Error: Element is not an <input>, <textarea> or [contenteditable] element
+Call log:
+[2m  - waiting for locator('[data-arf-id="agent-f1-26"]').first()[22m
+[2m    - locator resolved to <a tabindex="0" role="combobox" aria-expanded="true" aria-required="true" aria-label="Time Zone" data-arf-id="agent-f1-26" id="rcf3077_icimsDropdown" class="dropdown-select focus" aria-labelledby="label_rcf3077">…</a>[22m
+[2m    - fill("")[22m
+[2m  - attempting fill action[22m
+[2m    - waiting for element to be visible, enabled and editable[22m
+
+Failed to execute click on agent-f1-32: Could not find element agent-f1-32 in any frame
+Failed to execute clickText on undefined: Cannot read properties of undefined (reading 'unicode')
+Failed to execute click on agent-f1-2: Could not click element agent-f1-2: locator.click: Timeout 500ms exceeded.
+Call log:
+[2m  - waiting for locator('[data-arf-id="agent-f1-2"]').first()[22m
+[2m    - locator resolved to <a data-arf-id="agent-f1-2" href="https://careers-en-nortal.icims.com/jobs/dashboard?in_iframe=1&hashed=907552867">↵Dashboard</a>[22m
+[2m  - attempting click action[22m
+[2m    - scrolling into view if needed[22m
+[2m    - done scrolling[22m
+[2m    - forcing action[22m
+[2m    - performing click action[22m
+

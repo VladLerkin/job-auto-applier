@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Auto Resume Filler</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="tabs">
+    <button class="tab-btn active" data-target="generator-tab">Generator</button>
+    <button class="tab-btn" data-target="settings-tab">Settings</button>
+  </div>
+
+  <div id="generator-tab" class="tab-content active">
+    <button id="generate-btn" class="primary-btn">🚀 Fill Application Form</button>
+    <div id="loading" class="hidden">
+      <div class="spinner"></div>
+      <span>Agent is filling the form... This may take 1-2 minutes.</span>
+    </div>
+    <div id="result-container" class="hidden">
+      <div id="result-text" class="success-msg">✅ Form filled successfully! Check the browser tab.</div>
+    </div>
+    <div id="error-msg" class="error hidden"></div>
+  </div>
+
+  <div id="settings-tab" class="tab-content">
+    <label for="api-key">Gemini API Key:</label>
+    <input type="password" id="api-key" placeholder="Enter your API key">
+    
+    <label for="model-name">Model Name:</label>
+    <input type="text" id="model-name" placeholder="e.g., gemini-3.8-flash" value="gemini-3.8-flash">
+    
+    <label for="profile-text">Your Profile / Preferences:</label>
+    <textarea id="profile-text" rows="3" placeholder="E.g., I'm a Senior Frontend Engineer looking for remote work..."></textarea>
+    
+    <label for="cv-text">Your CV / Resume Text:</label>
+    <input type="file" id="cv-upload" accept="application/pdf" style="margin-bottom: 8px;">
+    <textarea id="cv-text" rows="12" placeholder="Paste your CV text here or upload a PDF above..."></textarea>
+    
+    <button id="save-settings-btn" class="primary-btn">Save Settings</button>
+    <div id="save-status" class="status-msg hidden">Saved successfully!</div>
+  </div>
+
+  <script src="pdf.min.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
