@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Handle PDF Upload
   const cvUpload = document.getElementById('cv-upload');
   if (typeof pdfjsLib !== 'undefined') {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '../lib/pdf.worker.min.js';
   }
 
   // ── Structure raw CV text via Gemini ─────────────────────────────────────────
