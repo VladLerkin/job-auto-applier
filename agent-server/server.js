@@ -6,6 +6,7 @@ const dotenv = require('dotenv');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const PDFDocument = require('pdfkit');
 
 function logToFile(msg) {
     fs.appendFileSync(path.join(__dirname, 'agent.log'), new Date().toISOString() + ' ' + msg + '\n');
@@ -43,6 +44,58 @@ async function askGemini(prompt, apiKey, modelName) {
         }
     });
     return JSON.parse(response.text);
+}
+
+// Generate plain-text cover letter via Gemini
+async function generateCoverLetterText(cvText, jobDescription, profileText, apiKey, modelName) {
+    const ai = new GoogleGenAI({ apiKey });
+    const prompt = `You are a professional career coach. Write a compelling, tailored cover letter for the job below.
+
+Job Description:
+${jobDescription || 'Not provided'}
+
+Candidate CV:
+${cvText}
+
+Candidate Preferences / Notes:
+${profileText || 'None'}
+
+Instructions:
+- 3-4 paragraphs, professional tone
+- Address the specific role and company if identifiable
+- Highlight the most relevant experience and skills
+- End with a strong closing statement
+- Do NOT include placeholders like [Your Name] — use the actual name from the CV
+- Output ONLY the cover letter text, no subject line, no extra commentary`;
+
+    const response = await ai.models.generateContent({
+        model: modelName || 'gemini-3.8-flash',
+        contents: prompt
+    });
+    return response.text.trim();
+}
+
+// Render cover letter text to a PDF file, return the temp file path
+function generateCoverLetterPdf(text, candidateName) {
+    return new Promise((resolve, reject) => {
+        const filePath = path.join(os.tmpdir(), `cover_letter_${Date.now()}.pdf`);
+        const doc = new PDFDocument({ margin: 60, size: 'A4' });
+        const stream = fs.createWriteStream(filePath);
+        doc.pipe(stream);
+
+        // Header
+        doc.font('Helvetica-Bold').fontSize(14).text(candidateName || 'Cover Letter', { align: 'left' });
+        doc.moveDown(0.3);
+        doc.font('Helvetica').fontSize(10).text(new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' }));
+        doc.moveDown(1);
+
+        // Body
+        doc.font('Helvetica').fontSize(11).text(text, { align: 'justify', lineGap: 4 });
+
+        doc.end();
+        stream.on('finish', () => resolve(filePath));
+        stream.on('error', reject);
+    });
 }
 
 
@@ -110,6 +163,21 @@ const extractDOM = (frameId) => {
         const role = el.getAttribute('role') || '';
         const ariaExpanded = el.getAttribute('aria-expanded') || '';
         
+        let isChecked = false;
+        if (el.type === 'radio' || el.type === 'checkbox') {
+            isChecked = el.checked || false;
+        }
+
+        // Provide parent context text for bare Yes/No buttons (for toggle switches)
+        let contextText = null;
+        if (el.tagName === 'BUTTON' && (textContent === 'Yes' || textContent === 'No')) {
+            let p = el.parentElement;
+            if (p) p = p.parentElement; // Go up 2 levels
+            if (p) {
+                contextText = (p.innerText || '').substring(0, 100).replace(/\n/g, ' ').trim();
+            }
+        }
+
         fields.push({
             id: uniqueId,
             tag: el.tagName.toLowerCase(),
@@ -117,29 +185,48 @@ const extractDOM = (frameId) => {
             name: el.name || '',
             placeholder: el.placeholder || '',
             label: labelText.trim().replace(/\n/g, ' '),
-            value: el.value || '',
+            value: el.type === 'radio' || el.type === 'checkbox' ? '' : (el.value || ''),
+            checked: isChecked,
             text: textContent,
-            role: role || undefined,
-            ariaExpanded: ariaExpanded || undefined,
+            context: contextText,
+            role: role || '',
+            ariaExpanded: ariaExpanded || '',
             options: optionsList.length > 0 ? optionsList : undefined
         });
     });
     
     return fields;
 };
+let isCancelled = false;
+
+app.post('/stop', (req, res) => {
+    isCancelled = true;
+    logToFile('🛑 Received stop request from UI');
+    res.json({ success: true, message: 'Agent stopping...' });
+});
 
 app.post('/fill', async (req, res) => {
+    isCancelled = false;
     // Reset timer on every request
     resetInactivityTimer();
     
-    const { cvText, apiKey, modelName, profileText, tabUrl } = req.body;
+    const { cvText, apiKey, modelName, profileText, tabUrl, cvPdfBase64, cvPdfName } = req.body;
     
     if (!cvText || !apiKey) {
         return res.status(400).json({ error: 'Missing cvText or apiKey' });
     }
 
+    // Save PDF to a temp file if provided
+    let tempPdfPath = null;
+    if (cvPdfBase64) {
+        tempPdfPath = path.join(os.tmpdir(), cvPdfName || 'resume.pdf');
+        fs.writeFileSync(tempPdfPath, Buffer.from(cvPdfBase64, 'base64'));
+        logToFile(`PDF saved to temp: ${tempPdfPath}`);
+    }
+
     let browser;
     let contexts;
+    let coverLetterTempPdf = null;
     try {
         console.log(`Connecting to Chrome on port 9222...`);
         try {
@@ -169,7 +256,176 @@ app.post('/fill', async (req, res) => {
         if (!page) page = pages[0]; // fallback
         
         console.log(`Working on tab: ${page.url()}`);
-        
+
+        // ── STEP 0: Try "Autofill from resume" feature (Ashby and similar) ────────
+        if (tempPdfPath) {
+            try {
+                // Look for "Autofill from resume" button - this is Ashby's native autofill
+                let autofillInput = null;
+                for (const frame of page.frames()) {
+                    // Find file input that is a sibling/descendant of an "autofill" container
+                    const allFileInputs = frame.locator('input[type="file"]');
+                    const fileCount = await allFileInputs.count().catch(() => 0);
+                    for (let fi = 0; fi < fileCount; fi++) {
+                        const inp = allFileInputs.nth(fi);
+                        const isAutofill = await inp.evaluate(el => {
+                            let node = el.parentElement;
+                            for (let d = 0; d < 8 && node; d++, node = node.parentElement) {
+                                const t = (node.innerText || node.textContent || '').toLowerCase();
+                                if (t.includes('autofill') || t.includes('auto-fill') || t.includes('auto fill')) return true;
+                            }
+                            return false;
+                        }).catch(() => false);
+                        if (isAutofill) { autofillInput = inp; break; }
+                    }
+                    if (autofillInput) break;
+                }
+
+                if (autofillInput) {
+                    logToFile('✅ Found "Autofill from resume" input — uploading PDF...');
+                    await autofillInput.setInputFiles(tempPdfPath);
+                    await page.waitForTimeout(4000); // wait for autofill to populate fields
+                    logToFile('✅ Autofill from resume complete — waiting for fields to populate');
+                } else {
+                    logToFile('No "Autofill from resume" feature found on this page');
+                }
+            } catch(e) {
+                logToFile(`⚠️ Autofill from resume failed: ${e.message}`);
+            }
+        }
+
+        // ── Helper: find a file input by nearby sibling/ancestor label text ────────
+        // Works for Ashby and similar patterns where <label> is a sibling to the
+        // container that holds the hidden <input type="file">.
+        async function findLabelledFileInput(keywords) {
+            for (const frame of page.frames()) {
+                // Strategy 1: CSS attribute-based matching (fast path)
+                for (const kw of keywords) {
+                    for (const attr of ['name', 'id', 'aria-label', 'data-label', 'data-testid']) {
+                        const sel = `input[type="file"][${attr}*="${kw}" i]`;
+                        const el = frame.locator(sel).first();
+                        if (await el.count().catch(() => 0) > 0) return { frame, locator: el };
+                    }
+                }
+
+                // Strategy 2: Enumerate all file inputs, walk up DOM to find sibling label text
+                const fileInputs = frame.locator('input[type="file"]');
+                const count = await fileInputs.count().catch(() => 0);
+                for (let i = 0; i < count; i++) {
+                    const input = fileInputs.nth(i);
+                    const matched = await input.evaluate((el, kws) => {
+                        // Walk up to find a common ancestor that also contains a label sibling
+                        let node = el.parentElement;
+                        for (let depth = 0; depth < 6 && node; depth++, node = node.parentElement) {
+                            const labelEls = node.querySelectorAll('label');
+                            for (const label of labelEls) {
+                                const text = (label.innerText || label.textContent || '').toLowerCase();
+                                if (kws.some(kw => text.includes(kw.toLowerCase()))) return true;
+                            }
+                            // Also check the node's own text (excluding inputs/buttons)
+                            const nodeText = (node.innerText || '').toLowerCase();
+                            if (kws.some(kw => nodeText.startsWith(kw.toLowerCase()))) return true;
+                        }
+                        return false;
+                    }, keywords).catch(() => false);
+                    if (matched) return { frame, locator: input };
+                }
+            }
+            return null;
+        }
+
+        // ── Helper: find a textarea for cover letter ─────────────────────────────
+        async function findCoverLetterTextArea() {
+            const coverKeywords = ['cover letter', 'cover_letter', 'coverletter', 'motivation', 'letter'];
+            for (const frame of page.frames()) {
+                // Strategy 1: attribute-based
+                for (const kw of coverKeywords) {
+                    for (const attr of ['name', 'id', 'aria-label', 'placeholder', 'data-label']) {
+                        const sel = `textarea[${attr}*="${kw}" i], input[type="text"][${attr}*="${kw}" i]`;
+                        const el = frame.locator(sel).first();
+                        if (await el.count().catch(() => 0) > 0) {
+                            if (await el.isVisible().catch(() => false)) return { frame, locator: el };
+                        }
+                    }
+                }
+                // Strategy 2: sibling label proximity (same pattern as file input above)
+                const textareas = frame.locator('textarea');
+                const count = await textareas.count().catch(() => 0);
+                for (let i = 0; i < count; i++) {
+                    const ta = textareas.nth(i);
+                    const isVis = await ta.isVisible().catch(() => false);
+                    if (!isVis) continue; // Skip hidden textareas like recaptcha
+
+                    const matched = await ta.evaluate((el, kws) => {
+                        let node = el.parentElement;
+                        for (let depth = 0; depth < 6 && node; depth++, node = node.parentElement) {
+                            const labelEls = node.querySelectorAll('label');
+                            for (const label of labelEls) {
+                                const text = (label.innerText || label.textContent || '').toLowerCase();
+                                if (kws.some(kw => text.includes(kw.toLowerCase()))) return true;
+                            }
+                        }
+                        return false;
+                    }, coverKeywords).catch(() => false);
+                    if (matched) return { frame, locator: ta };
+                }
+            }
+            return null;
+        }
+
+        // ── Auto-upload PDF resume ───────────────────────────────────────────────
+        if (tempPdfPath) {
+            try {
+                logToFile('Attempting to auto-upload PDF resume...');
+                const resumeInput = await findLabelledFileInput(['resume', 'cv']);
+                if (resumeInput) {
+                    await resumeInput.locator.setInputFiles(tempPdfPath);
+                    await page.waitForTimeout(2000);
+                    logToFile('✅ PDF resume uploaded to labelled resume input');
+                } else {
+                    logToFile('⚠️ No labelled resume/CV input found on this page. Skipping auto-upload.');
+                }
+            } catch (e) {
+                logToFile(`⚠️ PDF resume upload failed: ${e.message}`);
+            }
+        }
+
+        // ── Handle Cover Letter ──────────────────────────────────────────────────
+        try {
+            // Extract job description text from the page for context
+            const jobDescText = await page.evaluate(() => document.body.innerText.slice(0, 4000)).catch(() => '');
+
+            const clTextArea = await findCoverLetterTextArea();
+            if (clTextArea) {
+                // ✅ Case 1: There's a text field — generate and paste cover letter
+                logToFile('Cover letter TEXT field detected — generating cover letter text...');
+                const clText = await generateCoverLetterText(cvText, jobDescText, profileText, apiKey, modelName);
+                await clTextArea.locator.fill(clText);
+                await page.waitForTimeout(1000);
+                logToFile('✅ Cover letter text pasted into text area');
+            } else {
+                // Check if there's a cover letter FILE upload
+                // More aggressive search — Ashby uses hidden inputs with no attributes
+                const clFileInput = await findLabelledFileInput(['cover letter', 'cover_letter', 'coverletter', 'cover', 'letter', 'motivation']);
+                if (clFileInput) {
+                    // ✅ Case 2: Only a file upload — generate PDF and upload
+                    logToFile('Cover letter FILE input detected — generating cover letter PDF...');
+                    const clText = await generateCoverLetterText(cvText, jobDescText, profileText, apiKey, modelName);
+                    // Extract candidate name from CV
+                    const nameMatch = cvText.match(/==\s*PERSONAL INFO\s*==[\s\S]*?Full Name:\s*(.+)/i);
+                    const candidateName = nameMatch ? nameMatch[1].trim() : '';
+                    coverLetterTempPdf = await generateCoverLetterPdf(clText, candidateName);
+                    await clFileInput.locator.setInputFiles(coverLetterTempPdf);
+                    await page.waitForTimeout(2000);
+                    logToFile('✅ Cover letter PDF uploaded');
+                } else {
+                    logToFile('No cover letter field detected on this page');
+                }
+            }
+        } catch (e) {
+            logToFile(`⚠️ Cover letter handling failed: ${e.message}`);
+        }
+
         // Run a 15-step loop to allow for dynamic DOM updates (dropdowns, Add buttons, multiple experiences)
         let allActions = [];
         let completedEntries = []; // Track which experience/education entries are done
@@ -179,6 +435,11 @@ app.post('/fill', async (req, res) => {
         let lastActionsStr = "";
         
         for (let step = 0; step < 15; step++) {
+            if (isCancelled) {
+                logToFile('🛑 Agent loop cancelled by user.');
+                res.json({ success: false, error: 'Stopped by user' });
+                return; // Exits the function, triggering finally block
+            }
             try {
                 console.log(`\n--- Step ${step + 1} ---`);
                 await page.waitForTimeout(1500); 
@@ -216,73 +477,82 @@ app.post('/fill', async (req, res) => {
             ---
             ${cvText}
             ---
+
+            Here are the user's Preferences / Notes:
+            ---
+            ${profileText || 'None'}
+            ---
             
-            Here is the current DOM state (interactive elements):
+            Here is the current DOM state (interactive elements, including their current values):
             ---
             ${JSON.stringify(domState, null, 2)}
             ---
             
             Progress so far: ${actionSummary}
             
-            Decide what actions to take. Available actions: fill, click, clickText, selectOption.
+            ⚠️ CRITICAL RULE — SKIP ALREADY FILLED FIELDS:
+            - Look at the "value" field for each element. If a text field is ALREADY PRE-FILLED with correct data (e.g. your email, phone, location, or name), DO NOT touch it! 
+            - Only interact with fields that are empty ("value": "") or contain wrong data.
+            - If a radio or checkbox is already "checked": true, DO NOT click it again!
+            - The "context" field helps identify Yes/No buttons. Read the context to know what the button answers.
+            
+            Decide what actions to take. Available actions: fill, click, clickText, selectOption, selectNative.
             
             Rules:
-            1. Only fill fields you haven't successfully filled yet. If a field already has the correct value, DO NOT interact with it!
+            0. PREFERENCES: ALWAYS prioritize the user's Preferences over generic assumptions! If they state they work remotely, select Remote=Yes. If they don't require sponsorship, select Sponsorship=No option.
+            1. SKIP already-filled fields and already-checked radios/checkboxes.
             
             2. SEARCH DROPDOWN FIELDS (Country/Region, City, Title, Company, Office location):
                - Any field with a search icon (🔍) or role="combobox" is a search dropdown.
                - You MUST use "selectOption": { "action": "selectOption", "id": "<field id>", "search": "<search text>", "select": "<option to click>" }
                - Country/Region: { "action": "selectOption", "id": "<id>", "search": "Georgia", "select": "Georgia" }
                - City: { "action": "selectOption", "id": "<id>", "search": "Tbilisi", "select": "Tbilisi" }
-               - Title: Use a GENERIC title! Search "Software" and select "Software Developer" or "Software Engineer". Do NOT use exact CV titles like "Java Developer".
+               - Title: Use a GENERIC title! Search "Software" and select "Software Developer" or "Software Engineer".
                - Company: If it has a search icon, use selectOption. Otherwise use fill.
                - Do NOT use "fill" for search dropdown fields!
             
-            3. NATIVE <select> DROPDOWNS: If an element has tag="select" and "options" array, use "selectNative":
+            3. NATIVE <select> DROPDOWNS: tag="select" with "options" array → use "selectNative":
                { "action": "selectNative", "id": "<id>", "value": "Yes" }
-               The value must match one of the options listed in the element's "options" array.
             
-            4. RADIO BUTTONS: For radio inputs (type="radio"), use "click" with the ID of the radio option you want to select.
+            4. RADIO BUTTONS: type="radio" → use "click".
+            5. CHECKBOXES: type="checkbox" → use "click" to toggle on.
+            6. Phone Country Code: click "Country code" button, then clickText the correct country.
             
-            5. CHECKBOXES: For checkbox inputs (type="checkbox"), use "click" with the ID to toggle it on.
-            
-            6. Phone Country Code: If the phone country code is wrong, click the "Country code" button, then clickText the correct country.
-            
-            4. DATES - CRITICAL:
+            7. DATES - CRITICAL:
                - Format: YYYY-MM-DD
-               - Extract the EXACT month from the CV. NEVER default to January (01) unless the CV only says a year!
-               - For FROM (start) dates: use day 01. Example: "June 2023" → "2023-06-01"
-               - For TO (end) dates: use the LAST day of the month. Example: "March 2020" → "2020-03-31", "February 2019" → "2019-02-28", "June 2023" → "2023-06-30", "December 2021" → "2021-12-31"
-               - Last days: Jan=31, Feb=28(or 29 for leap year), Mar=31, Apr=30, May=31, Jun=30, Jul=31, Aug=31, Sep=30, Oct=31, Nov=30, Dec=31
-               - For current jobs, check "I currently work here" checkbox instead of setting an end date.
+               - Extract the EXACT month from the CV. NEVER default to January (01) unless CV only says a year!
+               - FROM dates: use day 01. Example: "June 2023" → "2023-06-01"
+               - TO dates: use LAST day of month. Example: "March 2020" → "2020-03-31"
+               - Last days: Jan=31, Feb=28, Mar=31, Apr=30, May=31, Jun=30, Jul=31, Aug=31, Sep=30, Oct=31, Nov=30, Dec=31
+               - For current jobs: check "I currently work here" checkbox.
             
-            5. EXPERIENCE - Fill the LAST 4 jobs from the CV, starting with the OLDEST first:
-               - This is important! The form displays entries with the most recent on top.
-               - So fill the oldest job first, then click Save, then +Add, then the next oldest, etc.
-               - For each entry: fill Title (selectOption), Company, Description, From date, To date → click Save
-               - Then click "+ Add" (label "Add experience entry") to add the next entry.
-               - Skip jobs if you've already completed them (check Progress above).
+            8. EXPERIENCE - Fill the LAST 4 jobs from the CV, starting with the OLDEST first:
+               - Fill oldest job first → click Save → click +Add → fill next oldest, etc.
+               - For each entry: fill Title (selectOption), Company, Description, From date, To date → click Save.
+               - Skip entries already completed (check Progress above).
             
-            6. EDUCATION - Also fill education entries from the CV:
-               - Click "+ Add" button for education (label "Add education entry") to open the form.
-               - Fill School/University, Degree, Field of Study, From date, To date → click Save.
-               - Use selectOption for any search-dropdown fields.
+            9. EDUCATION - Fill education entries:
+               - Click "+ Add" for education, fill School, Degree, Field, From date, To date → click Save.
             
-            7. Cover Letter: For long text fields, output the full text in a 'fill' action.
-            8. Return {"actions": []} if everything is done.
+            10. Cover Letter: DO NOT fill — it is handled separately.
             
-            Return JSON:
-            {
-               "actions": [
-                  { "action": "fill", "id": "agent-12", "value": "text to type" },
-                  { "action": "click", "id": "agent-45" },
-                  { "action": "selectNative", "id": "agent-30", "value": "Yes" },
-                  { "action": "selectOption", "id": "agent-20", "search": "Software", "select": "Software Developer" }
-               ]
-            }
+            11. WHEN DONE: When all fillable fields are complete and you have nothing more to do,
+                return { "done": true, "actions": [] } — this will STOP the agent and notify the user to review.
+                DO NOT try to submit the form!
+            
+            Return JSON (one of these two formats):
+            { "actions": [ { "action": "fill", "id": "agent-12", "value": "text" }, ... ] }
+            OR when finished:
+            { "done": true, "actions": [] }
             `;
                 
                 const result = await askGemini(prompt, apiKey, modelName);
+                if (isCancelled) {
+                    logToFile('🛑 Agent loop cancelled by user (during LLM wait).');
+                    res.json({ success: false, error: 'Stopped by user' });
+                    return;
+                }
+                
                 fs.writeFileSync(path.join(__dirname, 'debug_gemini.json'), JSON.stringify(result, null, 2));
                 console.log("Gemini Actions:", result.actions);
                 
@@ -299,7 +569,11 @@ app.post('/fill', async (req, res) => {
                 }
                 lastActionsStr = currentActionsStr;
                 
-                if (!result.actions || result.actions.length === 0) {
+                if (!result.actions || result.actions.length === 0 || result.done === true) {
+                    if (result.done === true) {
+                        logToFile('✅ Agent signalled form is complete — stopping for user review.');
+                        break;
+                    }
                     consecutiveEmptySteps++;
                     console.log(`No actions returned (${consecutiveEmptySteps} consecutive empty steps).`);
                     if (consecutiveEmptySteps >= 2) {
@@ -313,6 +587,11 @@ app.post('/fill', async (req, res) => {
                 allActions.push(...result.actions);
                 
                 for (const action of result.actions) {
+                    if (isCancelled) {
+                        logToFile('🛑 Agent loop cancelled by user (during action execution).');
+                        res.json({ success: false, error: 'Stopped by user' });
+                        return;
+                    }
                     try {
                         let targetLocator = null;
                         let targetFrame = null;
@@ -517,13 +796,26 @@ app.post('/fill', async (req, res) => {
             }
         }
 
-        res.json({ success: true, json: JSON.stringify({actions: allActions}, null, 2) });
+        res.json({ 
+            success: true, 
+            readyForReview: true,
+            message: '✅ Form filled! Please review all fields and submit manually.',
+            json: JSON.stringify({actions: allActions}, null, 2) 
+        });
     } catch (error) {
         console.error("Agent Error:", error);
         res.status(500).json({ error: error.message });
     } finally {
         if (browser) {
             try { await browser.disconnect(); } catch(e) { /* ignore */ }
+        }
+        // Clean up temp PDF file
+        if (tempPdfPath && fs.existsSync(tempPdfPath)) {
+            try { fs.unlinkSync(tempPdfPath); } catch(e) { /* ignore */ }
+        }
+        // Clean up cover letter temp PDF
+        if (coverLetterTempPdf && fs.existsSync(coverLetterTempPdf)) {
+            try { fs.unlinkSync(coverLetterTempPdf); } catch(e) { /* ignore */ }
         }
     }
 });
@@ -548,6 +840,7 @@ async function startDedicatedBrowser() {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
-    console.log(`Agent Server running on http://localhost:${PORT}`);
+    console.log(`✅ Agent Server running on http://localhost:${PORT}`);
+    console.log(`⏹  Press Ctrl+C to stop the server.`);
     await startDedicatedBrowser();
 });
