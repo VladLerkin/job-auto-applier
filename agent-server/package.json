@@ -2,9 +2,9 @@
   "name": "agent-server",
   "version": "1.2.0",
   "description": "Playwright AI Agent for Resume Autofill",
-  "main": "server.js",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node src/server.js"
   },
   "dependencies": {
     "@google/genai": "latest",
