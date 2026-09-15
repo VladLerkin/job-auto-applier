@@ -1,37 +1,38 @@
 # job-auto-applier
 
 See what's new in the [Release Notes](RELEASE_NOTES.md). | [Architecture & Design](docs/DESIGN.md)
-## Зачем нужна эта программа
-**job-auto-applier** — это инструмент, предназначенный для автоматического заполнения форм отклика на вакансии. Он анализирует ваш профиль и резюме (CV), и с помощью искусственного интеллекта (Gemini API) самостоятельно подставляет нужную информацию в поля формы на сайтах с вакансиями. Это экономит время и избавляет от рутинной работы.
 
-## Стек технологий
-Проект состоит из двух основных частей:
-1. **Chrome Extension (Клиентская часть):** Классическое расширение для Google Chrome (HTML, CSS, JavaScript). Выступает в роли пользовательского интерфейса для управления процессом и настройками.
-2. **Node.js Сервер (Агент):** Локальный сервер, использующий Express, `playwright` для автоматизации браузера и `@google/genai` для интеграции с нейросетью от Google (Gemini).
+## Why this program is needed
+**job-auto-applier** is a tool designed to automatically fill out job application forms. It analyzes your profile and resume (CV), and uses Artificial Intelligence (Gemini API) to independently insert the necessary information into form fields on job boards. This saves time and eliminates tedious routine work.
 
-## Как установить
-1. Склонируйте или скачайте этот репозиторий.
-2. **Установка расширения в Chrome:**
-   - Откройте браузер Chrome и перейдите по адресу `chrome://extensions/`.
-   - Включите **Режим разработчика** (Developer mode) в правом верхнем углу.
-   - Нажмите **Загрузить распакованное расширение** (Load unpacked) и выберите папку `chrome-extension/` этого проекта.
-3. **Запуск сервера-агента:**
-   - Просто запустите скрипт `Start Agent.command` двойным кликом. При первом запуске он автоматически установит все необходимые зависимости Node.js и скачает нужный браузер. Этот же скрипт запустит сервер и специальный инстанс браузера для работы.
+## Technology Stack
+The project consists of two main parts:
+1. **Chrome Extension (Client Side):** A classic Google Chrome extension (HTML, CSS, JavaScript). It acts as the user interface for managing the process and settings.
+2. **Node.js Server (Agent):** A local server using Express, `playwright` for browser automation, and `@google/genai` for integration with Google's AI (Gemini).
 
-## Управление программой
-Всё управление агентом осуществляется через всплывающее окно (popup) установленного расширения Chrome.
-- Откройте нужную страницу с формой отклика на вакансию.
-- Кликните на иконку расширения job-auto-applier.
-- Нажмите кнопку **🚀 Fill Application Form**, и агент начнет работу, заполняя поля автоматически.
+## How to Install
+1. Clone or download this repository.
+2. **Install the extension in Chrome:**
+   - Open Chrome and navigate to `chrome://extensions/`.
+   - Enable **Developer mode** in the top right corner.
+   - Click **Load unpacked** and select the `chrome-extension/` folder of this project.
+3. **Run the agent server:**
+   - Simply double-click the `Start Agent.command` script (or `Start Agent.bat` on Windows). On the first run, it will automatically install all necessary Node.js dependencies and download the required browser. This script will launch the server and a dedicated browser instance for the agent to work in.
 
-## Настройки
-В расширении есть вкладка **Settings** (Настройки), где можно задать параметры:
-* **Gemini API Key:** Ваш ключ доступа к API Gemini.
-* **Model Name:** Модель нейросети (по умолчанию `gemini-3.8-flash`).
-* **Your Profile / Preferences:** Любая дополнительная информация, которой нет в резюме, но которую часто спрашивают в формах отклика. Например: нужна ли вам визовая поддержка (visa sponsorship), ожидаемая зарплата, раса/этническая принадлежность, статус ветерана, наличие инвалидности (disability status), предпочтительный формат работы (remote/hybrid/on-site), уровень seniority и т.д.
-* **Your CV / Resume Text:** Текст вашего резюме. Вы можете вставить его вручную или загрузить в формате PDF — текст будет извлечен автоматически.
+## Using the Program
+All agent control is performed through the popup window of the installed Chrome extension.
+- Open the desired job application page.
+- Click on the job-auto-applier extension icon.
+- Click the **🚀 Fill Application Form** button, and the agent will begin filling in the fields automatically.
 
-### Что обязательно нужно заполнить для работы
-Чтобы расширение могло корректно работать и заполнять формы, **обязательно** должны быть заполнены следующие два поля в настройках:
-1. **Gemini API Key** (без ключа невозможен доступ к нейросети).
-2. **Your CV / Resume Text** (без вашего резюме агенту будет нечего подставлять в форму отклика).
+## Settings
+The extension has a **Settings** tab where you can configure the following parameters:
+* **Gemini API Key:** Your access key for the Gemini API.
+* **Model Name:** The AI model to use (default is `gemini-3.8-flash`).
+* **Your Profile / Preferences:** Any additional information that is not in your resume but is frequently asked in application forms. For example: whether you need visa sponsorship, expected salary, race/ethnicity, veteran status, disability status, preferred work format (remote/hybrid/on-site), seniority level, etc.
+* **Your CV / Resume Text:** The text of your resume. You can paste it manually or upload it as a PDF — the text will be extracted automatically.
+
+### Mandatory Requirements
+In order for the extension to work properly and fill out forms, the following two fields **must** be filled out in the settings:
+1. **Gemini API Key** (access to the AI is impossible without a key).
+2. **Your CV / Resume Text** (without your resume, the agent will have nothing to fill into the application form).
