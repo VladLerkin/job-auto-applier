@@ -47,7 +47,7 @@ async function askGemini(prompt, apiKey, modelName) {
 }
 
 // Generate plain-text cover letter via Gemini
-async function generateCoverLetterText(cvText, jobDescription, profileText, apiKey, modelName) {
+async function generateCoverLetterText(cvText, jobDescription, profileText, apiKey, modelName, maxLength) {
     const ai = new GoogleGenAI({ apiKey });
     const prompt = `You are a professional career coach. Write a compelling, tailored cover letter for the job below.
 
@@ -61,7 +61,7 @@ Candidate Preferences / Notes:
 ${profileText || 'None'}
 
 Instructions:
-- 3-4 paragraphs, professional tone
+${maxLength ? `- 1-2 paragraphs max, professional tone\n- VERY IMPORTANT: The output MUST be strictly under ${maxLength} characters in length.` : '- 3-4 paragraphs, professional tone'}
 - Address the specific role and company if identifiable
 - Highlight the most relevant experience and skills
 - End with a strong closing statement
@@ -127,8 +127,10 @@ const extractDOM = (frameId) => {
         const rect = el.getBoundingClientRect();
         // Basic visibility check
         if (rect.width <= 0 || rect.height <= 0) return false;
-        const style = window.getComputedStyle(el);
-        if (style.visibility === 'hidden' || style.display === 'none') return false;
+        try {
+            const style = window.getComputedStyle(el);
+            if (style.visibility === 'hidden' || style.display === 'none') return false;
+        } catch(e) {}
         // Filter out LinkedIn navigation noise (skip links, nav items outside modal)
         const text = (el.innerText || el.textContent || '').trim();
         if (el.tagName === 'BUTTON' && text.startsWith('Skip to ')) return false;
@@ -145,8 +147,26 @@ const extractDOM = (frameId) => {
         
         let labelText = '';
         if (el.id) {
-            const label = el.getRootNode().querySelector(`label[for="${el.id}"]`);
-            if (label) labelText = label.innerText;
+            try {
+                const safeId = el.id.replace(/"/g, '\\"');
+                const label = el.getRootNode().querySelector(`label[for="${safeId}"]`);
+                if (label) labelText = label.innerText;
+            } catch(e) {}
+        }
+        if (!labelText) {
+            const parentLabel = el.closest('label');
+            if (parentLabel) labelText = parentLabel.innerText;
+        }
+        if (!labelText && (el.type === 'radio' || el.type === 'checkbox' || el.getAttribute('role') === 'radio' || el.getAttribute('role') === 'checkbox')) {
+            let node = el.parentElement;
+            for(let i=0; i<4 && node; i++) {
+                let txt = (node.innerText || node.textContent || '').replace(/SVGs not supported by this browser\./g, '').trim();
+                if (txt) {
+                    labelText = txt.split('\n')[0];
+                    break;
+                }
+                node = node.parentElement;
+            }
         }
         if (!labelText) labelText = el.getAttribute('aria-label') || '';
         if (!labelText) labelText = el.name || '';
@@ -168,13 +188,44 @@ const extractDOM = (frameId) => {
             isChecked = el.checked || false;
         }
 
-        // Provide parent context text for bare Yes/No buttons (for toggle switches)
+        // Provide parent context text for bare Yes/No buttons and radios/checkboxes
         let contextText = null;
         if (el.tagName === 'BUTTON' && (textContent === 'Yes' || textContent === 'No')) {
             let p = el.parentElement;
             if (p) p = p.parentElement; // Go up 2 levels
             if (p) {
                 contextText = (p.innerText || '').substring(0, 100).replace(/\n/g, ' ').trim();
+            }
+        } else if (el.type === 'radio' || el.type === 'checkbox') {
+            const fieldset = el.closest('fieldset');
+            if (fieldset) {
+                const legend = fieldset.querySelector('legend');
+                if (legend) contextText = (legend.innerText || legend.textContent || '').substring(0, 150).replace(/\n/g, ' ').trim();
+            }
+            if (!contextText) {
+                let node = el.parentElement;
+                for(let i = 0; i < 6 && node; i++) {
+                    const heading = node.querySelector('h1, h2, h3, h4, h5, h6, strong, [role="heading"]');
+                    if (heading) {
+                        contextText = (heading.innerText || heading.textContent || '').substring(0, 150).replace(/\n/g, ' ').trim();
+                        break;
+                    }
+                    if (node.previousElementSibling && ['H3','LABEL','SPAN','STRONG'].includes(node.previousElementSibling.tagName)) {
+                        contextText = (node.previousElementSibling.innerText || node.previousElementSibling.textContent || '').substring(0, 150).replace(/\n/g, ' ').trim();
+                        break;
+                    }
+                    node = node.parentElement;
+                }
+            }
+            if (!contextText) {
+                let p = el.parentElement;
+                if (p && p.parentElement) p = p.parentElement;
+                if (p && p.parentElement) p = p.parentElement;
+                if (p && p.parentElement) p = p.parentElement;
+                if (p) {
+                    let lines = (p.innerText || '').replace(/SVGs not supported by this browser\./g, '').split('\n').map(l => l.trim()).filter(l => l);
+                    if (lines.length > 0) contextText = lines[0].substring(0, 150);
+                }
             }
         }
 
@@ -336,7 +387,7 @@ app.post('/fill', async (req, res) => {
 
         // ── Helper: find a textarea for cover letter ─────────────────────────────
         async function findCoverLetterTextArea() {
-            const coverKeywords = ['cover letter', 'cover_letter', 'coverletter', 'motivation', 'letter'];
+            const coverKeywords = ['cover letter', 'cover_letter', 'coverletter', 'motivation', 'letter', 'fit for this role', 'why would you be a fit', 'why are you a fit'];
             for (const frame of page.frames()) {
                 // Strategy 1: attribute-based
                 for (const kw of coverKeywords) {
@@ -344,7 +395,10 @@ app.post('/fill', async (req, res) => {
                         const sel = `textarea[${attr}*="${kw}" i], input[type="text"][${attr}*="${kw}" i]`;
                         const el = frame.locator(sel).first();
                         if (await el.count().catch(() => 0) > 0) {
-                            if (await el.isVisible().catch(() => false)) return { frame, locator: el };
+                            if (await el.isVisible().catch(() => false)) {
+                                const ml = await el.getAttribute('maxlength').catch(() => null);
+                                return { frame, locator: el, maxLength: ml ? parseInt(ml) : null };
+                            }
                         }
                     }
                 }
@@ -367,7 +421,10 @@ app.post('/fill', async (req, res) => {
                         }
                         return false;
                     }, coverKeywords).catch(() => false);
-                    if (matched) return { frame, locator: ta };
+                    if (matched) {
+                        const ml = await ta.getAttribute('maxlength').catch(() => null);
+                        return { frame, locator: ta, maxLength: ml ? parseInt(ml) : null };
+                    }
                 }
             }
             return null;
@@ -398,8 +455,8 @@ app.post('/fill', async (req, res) => {
             const clTextArea = await findCoverLetterTextArea();
             if (clTextArea) {
                 // ✅ Case 1: There's a text field — generate and paste cover letter
-                logToFile('Cover letter TEXT field detected — generating cover letter text...');
-                const clText = await generateCoverLetterText(cvText, jobDescText, profileText, apiKey, modelName);
+                logToFile(`Cover letter TEXT field detected (maxLength: ${clTextArea.maxLength || 'none'}) — generating text...`);
+                const clText = await generateCoverLetterText(cvText, jobDescText, profileText, apiKey, modelName, clTextArea.maxLength);
                 await clTextArea.locator.fill(clText);
                 await page.waitForTimeout(1000);
                 logToFile('✅ Cover letter text pasted into text area');
@@ -452,9 +509,25 @@ app.post('/fill', async (req, res) => {
                         const frameState = await frame.evaluate(extractDOM, `f${i}`);
                         domState = domState.concat(frameState);
                     } catch (e) {
-                        // ignore frames that are detached or cross-origin restricted
+                        fs.appendFileSync(path.join(__dirname, 'debug_error.log'), `Frame ${i} extract error: ` + e.message + '\n');
                     }
                 }
+                
+                const hasFormFields = domState.some(el => ['input', 'textarea', 'select'].includes(el.tag) && el.type !== 'hidden');
+                if (!hasFormFields) {
+                    logToFile(`No interactive form fields found on step ${step+1}, waiting...`);
+                    consecutiveEmptySteps++;
+                    if (consecutiveEmptySteps >= 5) {
+                        logToFile(`🛑 Gave up waiting for form fields after 5 tries.`);
+                        if (!res.headersSent) {
+                            res.json({ success: false, error: 'Could not detect any form fields on the page.' });
+                        }
+                        return;
+                    }
+                    continue; // Skip LLM call, wait and retry
+                }
+                consecutiveEmptySteps = 0;
+                
                 fs.writeFileSync(path.join(__dirname, 'debug_dom.json'), JSON.stringify(domState, null, 2));
                 
                 let errorPrompt = '';
@@ -826,9 +899,15 @@ async function startDedicatedBrowser() {
         const userDataDir = path.join(os.homedir(), '.ai-job-profile');
         const extensionPath = path.resolve(__dirname, '../'); 
         
-        // Launch Chrome natively on Mac to ensure extensions work flawlessly
+        // Launch Chrome natively based on the OS
         const { exec } = require('child_process');
-        exec(`open -n -a "Google Chrome" --args --remote-debugging-port=9222 --user-data-dir="${userDataDir}" --load-extension="${extensionPath}"`);
+        if (os.platform() === 'win32') {
+            exec(`start "" chrome --remote-debugging-port=9222 --user-data-dir="${userDataDir}" --load-extension="${extensionPath}"`);
+        } else if (os.platform() === 'darwin') {
+            exec(`open -n -a "Google Chrome" --args --remote-debugging-port=9222 --user-data-dir="${userDataDir}" --load-extension="${extensionPath}"`);
+        } else {
+            exec(`google-chrome --remote-debugging-port=9222 --user-data-dir="${userDataDir}" --load-extension="${extensionPath}"`);
+        }
         
         // Wait for it to open port
         await new Promise(r => setTimeout(r, 2000));
