@@ -65,7 +65,7 @@ job-auto-applier/
 │       └── test-jazzhr-submit.js
 │
 └── docs/                              # Project documentation & notes
-    └── task_description.md
+    └── DESIGN.md                      # Architecture docs (this file)
 ```
 
 ## Component Details
@@ -74,14 +74,14 @@ job-auto-applier/
 
 The extension provides the user interface — a popup with two tabs:
 - **Generator** — "Fill Application Form" button that sends the user's CV, API key, and current tab URL to the agent server via `POST /fill`. Also has a "Stop Agent" button.
-- **Settings** — API key, model name, profile/preferences, CV text (with PDF upload & AI restructuring), import/export.
+- **Settings** — API key, model name, profile/preferences, CV text. Features a Smart Import JSON modal, secure local JSON export, and an AI Confirm modal for PDF text extraction and structuring.
 
 **Key files:**
 | File | Responsibility |
 |------|---------------|
 | `manifest.json` | Declares permissions (`storage`, `activeTab`, `scripting`), popup, background worker |
 | `background.js` | Service worker with Gemini API call logic (used for direct extension-level AI calls) |
-| `popup/popup.js` | All popup UI logic: tabs, settings persistence, PDF parsing, CV restructuring, agent invocation |
+| `popup/popup.js` | All popup UI logic: tabs, settings persistence, PDF parsing, secure import/export modals, CV AI restructuring, agent invocation |
 | `lib/pdf.min.js` | PDF.js library for client-side PDF text extraction |
 
 ### Agent Server (`agent-server/src/`)
