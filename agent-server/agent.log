@@ -1,0 +1,187 @@
+2026-09-15T07:35:42.069Z PDF saved to temp: /var/folders/g7/rjj4nn991cd6pn40cb5dvfk40000gn/T/Vlad Iarygin CV Senior Backend Engineer_hirify.pdf
+2026-09-15T07:35:42.179Z Attempting to auto-upload PDF resume...
+2026-09-15T07:35:44.217Z ✅ PDF resume uploaded to labelled resume input
+2026-09-15T07:36:14.358Z Cover letter TEXT field detected — generating cover letter text...
+2026-09-15T07:36:52.114Z ⚠️ Cover letter handling failed: locator.fill: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('textarea').first()[22m
+[2m    - locator resolved to <textarea name="g-recaptcha-response" class="g-recaptcha-response" id="g-recaptcha-response-100000"></textarea>[22m
+[2m    - fill("Dear Hiring Team at Trulioo,[22m
+
+[2mI am writing to express my strong interest in the Staff Engineer / Architect position on Trulioo's AI Agentic Team. With over eight years of experience architecting resilient distributed systems, event-driven microservices, and secure APIs across high-compliance FinTech environments, I bring a unique combination of enterprise-grade backend rigor and practical expertise in autonomous agentic systems. As Trulioo scales its identity verification infrastructure, I am eager to architect agentic platforms that balance cutting-edge autonomous reasoning with mission-critical reliability, determinism, and performance.[22m
+
+[2mThroughout my career, notably at Raiffeisenbank and Innotech, I have designed core systems capable of handling complex enterprise workflows and heavy loads. At Raiffeisenbank, I architected an external OpenAPI ecosystem with asynchronous event models that enabled institutional clients to autonomously trigger, track, and retrieve statements, drastically reducing manual support overhead. At Innotech, I led pivotal microservice migrations and cloud storage refactoring that reduced database footprint by 35x while hardening enterprise security protocols. This deep background in API design, event streaming, and cloud resilience provides the foundational bedrock required to build production-ready agentic architectures that interface seamlessly with complex enterprise ecosystems.[22m
+
+[2mIn parallel, I have dedicated substantial focus to modern agentic AI design patterns, orchestrating multi-agent systems using Python, LangGraph, LangChain, crewAI, Spring AI, and advanced memory frameworks such as Mem0. Moving beyond standard retrieval patterns, my work emphasizes building directed agent graphs, tool-calling pipelines, dynamic planning, and robust fallback mechanisms—demonstrated in projects like my cross-platform editor integrating Koog AI agent orchestration. At a staff and architectural level, I understand how to turn probabilistic LLM behaviors into deterministic, auditable, and cost-effective software solutions that deliver high-impact automation.[22m
+
+[2mTrulioo’s reputation for global identity verification requires an AI architecture built on uncompromising security, scalability, and trust. Operating remotely as a self-directed technical leader, I am prepared to partner closely with engineering and product teams to define technical strategy, establish architectural standards, and deploy resilient agentic systems. I welcome the opportunity to discuss how my architectural experience and passion for agentic AI can accelerate Trulioo’s technological vision.[22m
+
+[2mSincerely,[22m
+
+[2mVlad Iarygin")[22m
+[2m  - attempting fill action[22m
+[2m    2 × waiting for element to be visible, enabled and editable[22m
+[2m      - element is not visible[22m
+[2m    - retrying fill action[22m
+[2m    - waiting 20ms[22m
+[2m    2 × waiting for element to be visible, enabled and editable[22m
+[2m      - element is not visible[22m
+[2m    - retrying fill action[22m
+[2m      - waiting 100ms[22m
+[2m    59 × waiting for element to be visible, enabled and editable[22m
+[2m       - element is not visible[22m
+[2m     - retrying fill action[22m
+[2m       - waiting 500ms[22m
+
+2026-09-15T07:43:45.407Z PDF saved to temp: /var/folders/g7/rjj4nn991cd6pn40cb5dvfk40000gn/T/Vlad Iarygin CV Senior Backend Engineer_hirify.pdf
+2026-09-15T07:43:45.533Z Attempting to auto-upload PDF resume...
+2026-09-15T07:43:47.571Z ✅ PDF resume uploaded to labelled resume input
+2026-09-15T07:43:47.656Z Cover letter TEXT field detected — generating cover letter text...
+2026-09-15T07:44:25.890Z ⚠️ Cover letter handling failed: locator.fill: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('textarea').first()[22m
+[2m    - locator resolved to <textarea name="g-recaptcha-response" class="g-recaptcha-response" id="g-recaptcha-response-100000"></textarea>[22m
+[2m    - fill("Dear Hiring Team at Trulioo,[22m
+
+[2mI am writing to express my strong interest in the Staff Engineer or Architect position on Trulioo’s AI Agentic Team. With over eight years of experience architecting resilient distributed systems, enterprise microservices, and high-throughput APIs across FinTech and mission-critical environments, paired with dedicated engineering in autonomous and multi-agent AI systems, I am excited about the opportunity to help shape and scale Trulioo’s next generation of intelligent identity verification solutions.[22m
+
+[2mThroughout my career, I have focused on solving complex architectural challenges where performance, fault tolerance, and data integrity are paramount. At Raiffeisenbank, I designed and delivered public-facing OpenAPIs and event-driven architectures that automated multi-step financial reporting workflows, significantly cutting manual support overhead while maintaining stringent banking standards. Prior to that, at Innotech, I contributed to modernizing a monolithic enterprise platform into a decoupled microservice architecture and managed cloud migrations that reduced database footprints by 35x. This deep background in API design, event streaming, and distributed systems provides the solid architectural backbone needed to anchor probabilistic AI agent workflows into enterprise-grade production platforms.[22m
+
+[2mBeyond core backend architecture, I actively design and build agentic AI systems using Python, LangChain, LangGraph, crewAI, and modular agent architectures like Koog AI. The most pressing challenge in deploying agentic AI to production is bridging the gap between autonomous decision-making and deterministic, secure business logic. My work focuses precisely on this intersection: orchestrating multi-agent state machines, integrating retrieval and long-term memory management via frameworks like Mem0, and implementing robust tool-use mechanisms that seamlessly interact with enterprise services. [22m
+
+[2mOperating from Tbilisi, Georgia, I am fully equipped to deliver high-impact technical leadership in a remote capacity, requiring no visa sponsorship or relocation support. I welcome the opportunity to discuss how my architectural rigor and passion for agentic systems can help Trulioo lead the industry in AI-driven identity solutions.[22m
+
+[2mSincerely,[22m
+[2mVlad Iarygin")[22m
+[2m  - attempting fill action[22m
+[2m    2 × waiting for element to be visible, enabled and editable[22m
+[2m      - element is not visible[22m
+[2m    - retrying fill action[22m
+[2m    - waiting 20ms[22m
+[2m    2 × waiting for element to be visible, enabled and editable[22m
+[2m      - element is not visible[22m
+[2m    - retrying fill action[22m
+[2m      - waiting 100ms[22m
+[2m    59 × waiting for element to be visible, enabled and editable[22m
+[2m       - element is not visible[22m
+[2m     - retrying fill action[22m
+[2m       - waiting 500ms[22m
+
+2026-09-15T07:55:45.296Z PDF saved to temp: /var/folders/g7/rjj4nn991cd6pn40cb5dvfk40000gn/T/Vlad Iarygin CV Senior Backend Engineer_hirify.pdf
+2026-09-15T07:55:45.411Z ✅ Found "Autofill from resume" input — uploading PDF...
+2026-09-15T07:55:49.428Z ✅ Autofill from resume complete — waiting for fields to populate
+2026-09-15T07:55:49.429Z Attempting to auto-upload PDF resume...
+2026-09-15T07:55:51.481Z ✅ PDF resume uploaded to labelled resume input
+2026-09-15T07:55:51.558Z Cover letter TEXT field detected — generating cover letter text...
+2026-09-15T07:56:31.529Z ⚠️ Cover letter handling failed: locator.fill: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('textarea').first()[22m
+[2m    - locator resolved to <textarea name="g-recaptcha-response" class="g-recaptcha-response" id="g-recaptcha-response-100000"></textarea>[22m
+[2m    - fill("Dear Hiring Team at Trulioo,[22m
+
+[2mI am writing to express my strong interest in the Staff Engineer or Architect position within the AI Agentic Team at Trulioo. With eight years of experience architecting resilient, high-load microservice platforms across FinTech and enterprise domains, combined with dedicated hands-on expertise in multi-agent orchestration frameworks like LangGraph, crewAI, and LangChain, I specialize in bridging battle-tested backend engineering with cutting-edge autonomous AI systems. Trulioo’s mission to build trust and identity verification at global scale provides the ideal landscape to apply robust agentic architectures that deliver verifiable, secure, and production-grade automation.[22m
+
+[2mThroughout my career, I have focused on designing scalable distributed architectures that handle complex enterprise workflows with high reliability. At Raiffeisenbank, I architected the bank’s external OpenAPI status and event-driven reporting models, enabling institutional clients to autonomously query, trigger, and retrieve data while significantly driving down operational overhead. Earlier at Innotech, I led pivotal architectural efforts during the transition from a monolithic ECM to a cloud-native microservices platform, which reduced the database footprint by 35x through S3 cloud migration and enhanced digital onboarding capabilities. These experiences honed my ability to design high-throughput, fault-tolerant infrastructure where data integrity and strict operational constraints are paramount.[22m
+
+[2mAs AI transitions from static prompt interfaces to deterministic, autonomous agents, building enterprise-ready agentic systems demands the exact architectural rigor I bring to the table. Beyond traditional Java and cloud ecosystems, I actively engineer multi-agent systems utilizing Python, LangGraph, LangSmith, and memory management tools like Mem0 and Memsearch to design reliable state machines, resilient tool-calling pipelines, and autonomous workflows. Whether integrating local and cloud AI models in multiplatform applications or orchestrating specialized agents that execute complex business logic, I design with a clear focus on latency, observability, deterministic error recovery, and security.[22m
+
+[2mI am eager to bring this architectural mindset to Trulioo's engineering initiatives, driving the technical vision for autonomous agent solutions. I am prepared to contribute fully in a remote capacity without requiring visa sponsorship, bringing the autonomy, discipline, and collaborative leadership needed to deliver immediate value. I welcome the opportunity to discuss how my background in distributed systems and agentic engineering can accelerate Trulioo’s next generation of AI-driven capabilities.[22m
+
+[2mSincerely,[22m
+
+[2mVlad Iarygin")[22m
+[2m  - attempting fill action[22m
+[2m    2 × waiting for element to be visible, enabled and editable[22m
+[2m      - element is not visible[22m
+[2m    - retrying fill action[22m
+[2m    - waiting 20ms[22m
+[2m    2 × waiting for element to be visible, enabled and editable[22m
+[2m      - element is not visible[22m
+[2m    - retrying fill action[22m
+[2m      - waiting 100ms[22m
+[2m    59 × waiting for element to be visible, enabled and editable[22m
+[2m       - element is not visible[22m
+[2m     - retrying fill action[22m
+[2m       - waiting 500ms[22m
+
+2026-09-15T07:59:06.370Z ✅ Agent signalled form is complete — stopping for user review.
+2026-09-15T08:04:07.614Z PDF saved to temp: /var/folders/g7/rjj4nn991cd6pn40cb5dvfk40000gn/T/Vlad Iarygin CV Senior Backend Engineer_hirify.pdf
+2026-09-15T08:04:07.731Z ✅ Found "Autofill from resume" input — uploading PDF...
+2026-09-15T08:04:11.747Z ✅ Autofill from resume complete — waiting for fields to populate
+2026-09-15T08:04:11.749Z Attempting to auto-upload PDF resume...
+2026-09-15T08:04:13.796Z ✅ PDF resume uploaded to labelled resume input
+2026-09-15T08:04:14.014Z Cover letter FILE input detected — generating cover letter PDF...
+2026-09-15T08:04:23.180Z ✅ Cover letter PDF uploaded
+2026-09-15T08:06:34.959Z ✅ Agent signalled form is complete — stopping for user review.
+2026-09-15T08:13:21.382Z PDF saved to temp: /var/folders/g7/rjj4nn991cd6pn40cb5dvfk40000gn/T/Vlad Iarygin CV Senior Backend Engineer_hirify.pdf
+2026-09-15T08:13:21.498Z ✅ Found "Autofill from resume" input — uploading PDF...
+2026-09-15T08:13:25.515Z ✅ Autofill from resume complete — waiting for fields to populate
+2026-09-15T08:13:25.516Z Attempting to auto-upload PDF resume...
+2026-09-15T08:13:27.562Z ✅ PDF resume uploaded to labelled resume input
+2026-09-15T08:13:27.756Z Cover letter FILE input detected — generating cover letter PDF...
+2026-09-15T08:13:37.043Z ✅ Cover letter PDF uploaded
+2026-09-15T08:18:04.918Z PDF saved to temp: /var/folders/g7/rjj4nn991cd6pn40cb5dvfk40000gn/T/Vlad Iarygin CV Senior Backend Engineer_hirify.pdf
+2026-09-15T08:18:05.040Z ✅ Found "Autofill from resume" input — uploading PDF...
+2026-09-15T08:18:09.057Z ✅ Autofill from resume complete — waiting for fields to populate
+2026-09-15T08:18:09.059Z Attempting to auto-upload PDF resume...
+2026-09-15T08:18:11.105Z ✅ PDF resume uploaded to labelled resume input
+2026-09-15T08:18:11.321Z Cover letter FILE input detected — generating cover letter PDF...
+2026-09-15T08:18:19.660Z ✅ Cover letter PDF uploaded
+2026-09-15T08:19:03.923Z 🛑 Received stop request from UI
+2026-09-15T08:19:07.923Z ✅ Agent signalled form is complete — stopping for user review.
+2026-09-15T08:26:08.010Z PDF saved to temp: /var/folders/g7/rjj4nn991cd6pn40cb5dvfk40000gn/T/Vlad Iarygin CV Senior Backend Engineer_hirify.pdf
+2026-09-15T08:26:09.054Z No "Autofill from resume" feature found on this page
+2026-09-15T08:26:09.055Z Attempting to auto-upload PDF resume...
+2026-09-15T08:26:14.109Z No cover letter field detected on this page
+2026-09-15T08:26:40.062Z ✅ Agent signalled form is complete — stopping for user review.
+2026-09-15T08:27:49.156Z PDF saved to temp: /var/folders/g7/rjj4nn991cd6pn40cb5dvfk40000gn/T/Vlad Iarygin CV Senior Backend Engineer_hirify.pdf
+2026-09-15T08:27:50.164Z No "Autofill from resume" feature found on this page
+2026-09-15T08:27:50.165Z Attempting to auto-upload PDF resume...
+2026-09-15T08:27:53.252Z ✅ PDF resume uploaded to first file input (fallback)
+2026-09-15T08:27:57.478Z No cover letter field detected on this page
+2026-09-15T08:27:58.476Z 🛑 Received stop request from UI
+2026-09-15T08:28:14.305Z 🛑 Agent loop cancelled by user.
+2026-09-15T08:33:32.426Z PDF saved to temp: /var/folders/g7/rjj4nn991cd6pn40cb5dvfk40000gn/T/Vlad Iarygin CV Senior Backend Engineer_hirify.pdf
+2026-09-15T08:33:33.952Z No "Autofill from resume" feature found on this page
+2026-09-15T08:33:33.952Z Attempting to auto-upload PDF resume...
+2026-09-15T08:33:35.345Z ⚠️ No labelled resume/CV input found on this page. Skipping auto-upload.
+2026-09-15T08:33:40.525Z No cover letter field detected on this page
+2026-09-15T08:34:42.174Z ✅ Agent signalled form is complete — stopping for user review.
+2026-09-15T08:38:13.051Z PDF saved to temp: /var/folders/g7/rjj4nn991cd6pn40cb5dvfk40000gn/T/Vlad Iarygin CV Senior Backend Engineer_hirify.pdf
+2026-09-15T08:38:13.255Z No "Autofill from resume" feature found on this page
+2026-09-15T08:38:13.256Z Attempting to auto-upload PDF resume...
+2026-09-15T08:38:15.271Z ✅ PDF resume uploaded to labelled resume input
+2026-09-15T08:38:15.905Z No cover letter field detected on this page
+2026-09-15T08:38:36.089Z ✅ Agent signalled form is complete — stopping for user review.
+2026-09-15T08:46:41.729Z PDF saved to temp: /var/folders/g7/rjj4nn991cd6pn40cb5dvfk40000gn/T/Vlad Iarygin CV Senior Backend Engineer_hirify.pdf
+2026-09-15T08:46:41.930Z ✅ Found "Autofill from resume" input — uploading PDF...
+2026-09-15T08:46:45.946Z ✅ Autofill from resume complete — waiting for fields to populate
+2026-09-15T08:46:45.947Z Attempting to auto-upload PDF resume...
+2026-09-15T08:46:47.995Z ✅ PDF resume uploaded to labelled resume input
+2026-09-15T08:46:48.293Z No cover letter field detected on this page
+2026-09-15T08:47:08.934Z 🛑 Received stop request from UI
+2026-09-15T08:47:14.648Z 🛑 Agent loop cancelled by user (during LLM wait).
+2026-09-15T08:47:51.287Z PDF saved to temp: /var/folders/g7/rjj4nn991cd6pn40cb5dvfk40000gn/T/Vlad Iarygin CV Senior Backend Engineer_hirify.pdf
+2026-09-15T08:47:53.507Z No "Autofill from resume" feature found on this page
+2026-09-15T08:47:53.508Z Attempting to auto-upload PDF resume...
+2026-09-15T08:47:55.376Z ⚠️ No labelled resume/CV input found on this page. Skipping auto-upload.
+2026-09-15T08:48:03.077Z No cover letter field detected on this page
+2026-09-15T08:48:20.712Z ✅ Agent signalled form is complete — stopping for user review.
+2026-09-15T08:48:51.802Z PDF saved to temp: /var/folders/g7/rjj4nn991cd6pn40cb5dvfk40000gn/T/Vlad Iarygin CV Senior Backend Engineer_hirify.pdf
+2026-09-15T08:48:51.972Z No "Autofill from resume" feature found on this page
+2026-09-15T08:48:51.972Z Attempting to auto-upload PDF resume...
+2026-09-15T08:48:53.989Z ✅ PDF resume uploaded to labelled resume input
+2026-09-15T08:48:54.064Z Cover letter FILE input detected — generating cover letter PDF...
+2026-09-15T08:49:03.103Z ✅ Cover letter PDF uploaded
+2026-09-15T08:50:54.718Z ✅ Agent signalled form is complete — stopping for user review.
+2026-09-15T08:57:28.373Z PDF saved to temp: /var/folders/g7/rjj4nn991cd6pn40cb5dvfk40000gn/T/Vlad Iarygin CV Senior Backend Engineer_hirify.pdf
+2026-09-15T08:57:28.580Z No "Autofill from resume" feature found on this page
+2026-09-15T08:57:28.580Z Attempting to auto-upload PDF resume...
+2026-09-15T08:57:30.596Z ✅ PDF resume uploaded to labelled resume input
+2026-09-15T08:57:31.034Z No cover letter field detected on this page
+2026-09-15T08:58:11.460Z ✅ Agent signalled form is complete — stopping for user review.
+2026-09-15T08:59:11.162Z PDF saved to temp: /var/folders/g7/rjj4nn991cd6pn40cb5dvfk40000gn/T/Vlad Iarygin CV Senior Backend Engineer_hirify.pdf
+2026-09-15T08:59:11.386Z No "Autofill from resume" feature found on this page
+2026-09-15T08:59:11.387Z Attempting to auto-upload PDF resume...
+2026-09-15T08:59:13.403Z ✅ PDF resume uploaded to labelled resume input
+2026-09-15T08:59:13.876Z No cover letter field detected on this page

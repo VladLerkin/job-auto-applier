@@ -13,6 +13,7 @@
 
   <div id="generator-tab" class="tab-content active">
     <button id="generate-btn" class="primary-btn">🚀 Fill Application Form</button>
+    <button id="stop-btn" class="danger-btn hidden">🛑 Stop Agent</button>
     <div id="loading" class="hidden">
       <div class="spinner"></div>
       <span>Agent is filling the form... This may take 1-2 minutes.</span>
@@ -24,6 +25,11 @@
   </div>
 
   <div id="settings-tab" class="tab-content">
+    <div style="margin-bottom: 15px;">
+      <button id="save-settings-btn" class="primary-btn">Save Settings</button>
+      <div id="save-status" class="status-msg hidden">Saved successfully!</div>
+    </div>
+
     <label for="api-key">Gemini API Key:</label>
     <input type="password" id="api-key" placeholder="Enter your API key">
     
@@ -36,9 +42,14 @@
     <label for="cv-text">Your CV / Resume Text:</label>
     <input type="file" id="cv-upload" accept="application/pdf" style="margin-bottom: 8px;">
     <textarea id="cv-text" rows="12" placeholder="Paste your CV text here or upload a PDF above..."></textarea>
-    
-    <button id="save-settings-btn" class="primary-btn">Save Settings</button>
-    <div id="save-status" class="status-msg hidden">Saved successfully!</div>
+    <button id="restructure-btn" class="secondary-btn" style="width:100%; margin-bottom:12px;">🤖 Re-structure CV with AI</button>
+
+    <div class="backup-row">
+      <button id="export-btn" class="secondary-btn">⬇️ Export Settings</button>
+      <label for="import-file" class="secondary-btn import-label">⬆️ Import Settings</label>
+      <input type="file" id="import-file" accept=".json" style="display:none;">
+    </div>
+    <div id="import-status" class="status-msg hidden">Imported successfully!</div>
   </div>
 
   <script src="pdf.min.js"></script>
