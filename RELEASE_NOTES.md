@@ -1,5 +1,12 @@
 # Release Notes
 
+## v1.3.1
+**Release Date:** September 15, 2026
+
+### Developer Tools & Documentation
+- **Agentic Release Skill:** Added a dedicated agent skill (`release-app`) to automate future version bumping, changelog generation, tagging, and pushing for this project. 
+- **Documentation Restructure:** Fully translated `README.md` to English with a new "Key Features" section. Updated `DESIGN.md` to include recent architecture changes, and removed obsolete draft files.
+
 ## v1.3.0
 **Release Date:** September 15, 2026
 
