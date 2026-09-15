@@ -7,10 +7,34 @@ body {
   color: #1f2937;
 }
 
-.tabs {
+.header-container {
   display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: 16px;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.tabs {
+  display: flex;
+  flex: 1;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.2s;
+  margin-top: -4px;
+  margin-right: -8px;
+}
+
+.close-btn:hover {
+  color: #ef4444;
 }
 
 .tab-btn {
@@ -187,4 +211,55 @@ textarea {
 
 .import-label {
   display: block;
+}
+
+/* Modal Styles */
+.modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 80%;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 16px;
+}
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  font-weight: normal;
+  margin: 0;
+  cursor: pointer;
+}
+
+.checkbox-group input {
+  margin-right: 10px;
+  width: 16px;
+  height: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
 }

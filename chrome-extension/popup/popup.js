@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // Tabs logic
+  // ── Tabs Logic ───────────────────────────────────────────────────────────────
   const tabBtns = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
 
@@ -7,10 +7,14 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => {
       tabBtns.forEach(b => b.classList.remove('active'));
       tabContents.forEach(c => c.classList.remove('active'));
-      
       btn.classList.add('active');
       document.getElementById(btn.dataset.target).classList.add('active');
     });
+  });
+
+  // ── Close Popup Logic ────────────────────────────────────────────────────────
+  document.getElementById('close-popup-btn').addEventListener('click', () => {
+    window.close();
   });
 
   // Load Settings
@@ -19,12 +23,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const profileInput = document.getElementById('profile-text');
   const cvInput = document.getElementById('cv-text');
   
-  chrome.storage.local.get(['apiKey', 'modelName', 'profile', 'cv'], (result) => {
-    if (result.apiKey) apiKeyInput.value = result.apiKey;
-    if (result.modelName) modelNameInput.value = result.modelName;
-    if (result.profile) profileInput.value = result.profile;
-    if (result.cv) cvInput.value = result.cv;
-  });
+  // ── Load saved settings on startup ─────────────────────────────────────────────
+  async function loadSettings() {
+    const { apiKey, modelName, cv, profile, cvPdfName } = await chrome.storage.local.get(['apiKey', 'modelName', 'cv', 'profile', 'cvPdfName']);
+    if (apiKey) apiKeyInput.value = apiKey;
+    if (modelName) modelNameInput.value = modelName;
+    if (profile) profileInput.value = profile;
+    if (cv) cvInput.value = cv;
+    if (cvPdfName) {
+      document.getElementById('loaded-pdf-name').textContent = `Loaded: ${cvPdfName}`;
+    }
+  }
+  loadSettings();
 
   // Save Settings
   document.getElementById('save-settings-btn').addEventListener('click', () => {
@@ -147,8 +157,10 @@ ${rawText}`;
       reader.readAsDataURL(file);
     });
     chrome.storage.local.set({ cvPdfBase64: pdfBase64, cvPdfName: file.name });
+    document.getElementById('loaded-pdf-name').textContent = `Loaded: ${file.name}`;
 
     const saveStatus = document.getElementById('save-status');
+    const originalCvText = cvInput.value;
 
     // Step 1: Extract raw text
     cvInput.value = "⏳ Step 1/2: Extracting text from PDF...";
@@ -186,31 +198,83 @@ ${rawText}`;
       return;
     }
 
-    // Step 2: Structure with Gemini (only if API key is set)
+    // Step 2: Ask user and process text
     const { apiKey, modelName } = await chrome.storage.local.get(['apiKey', 'modelName']);
 
-    if (apiKey) {
-      cvInput.value = "🤖 Step 2/2: Structuring CV with AI, please wait...";
-      saveStatus.textContent = "🤖 Step 2/2: Structuring with AI...";
+    // Восстанавливаем оригинальный текст на время показа модалки
+    cvInput.value = originalCvText; 
+    
+    const useText = await new Promise((resolve) => {
+      let modal = document.getElementById('ai-confirm-modal');
+      if (!modal) {
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = `
+          <div id="ai-confirm-modal" class="modal hidden">
+            <div class="modal-content">
+              <h3>Overwrite CV Text?</h3>
+              <p id="ai-confirm-msg" style="font-size: 14px; margin-bottom: 20px; line-height: 1.5; font-weight: normal; color: #374151;">
+                <!-- Injected via JS -->
+              </p>
+              <div class="modal-actions">
+                <button id="ai-cancel-btn" class="secondary-btn">Cancel</button>
+                <button id="ai-confirm-btn" class="primary-btn">Yes, overwrite text</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modalContainer.firstElementChild);
+        modal = document.getElementById('ai-confirm-modal');
+      }
+      const msgEl = document.getElementById('ai-confirm-msg');
+      
+      if (apiKey) {
+        msgEl.innerHTML = "Do you want to use AI (Gemini) to automatically structure the extracted text from your PDF?<br><br>If you click <b>Cancel</b>, the PDF will be saved for auto-uploading on job sites, but your CV text below will <b>not</b> be changed.";
+      } else {
+        msgEl.innerHTML = "Do you want to load the raw text from this PDF into the text box below?<br><br>(<i>Hint: Add a Gemini API Key in settings to let AI structure it nicely for you!</i>)<br><br>If you click <b>Cancel</b>, the PDF will be saved for auto-uploading on job sites, but your CV text below will <b>not</b> be changed.";
+      }
 
-      try {
-        const structured = await structureCvWithLLM(rawText, apiKey, modelName);
-        cvInput.value = structured;
-        saveStatus.textContent = "✅ CV extracted, structured by AI, and saved!";
-      } catch (err) {
-        // Fall back to raw text if LLM call fails — show error prominently
+      modal.classList.remove('hidden');
+      
+      const onConfirm = () => { cleanup(); resolve(true); };
+      const onCancel = () => { cleanup(); resolve(false); };
+      
+      document.getElementById('ai-confirm-btn').addEventListener('click', onConfirm);
+      document.getElementById('ai-cancel-btn').addEventListener('click', onCancel);
+      
+      function cleanup() {
+        modal.classList.add('hidden');
+        document.getElementById('ai-confirm-btn').removeEventListener('click', onConfirm);
+        document.getElementById('ai-cancel-btn').removeEventListener('click', onCancel);
+      }
+    });
+
+    if (useText) {
+      if (apiKey) {
+        cvInput.value = "🤖 Step 2/2: Structuring CV with AI, please wait...";
+        saveStatus.textContent = "🤖 Step 2/2: Structuring with AI...";
+        saveStatus.classList.remove('hidden');
+
+        try {
+          const structured = await structureCvWithLLM(rawText, apiKey, modelName);
+          cvInput.value = structured;
+          saveStatus.textContent = "✅ CV extracted, structured by AI, and saved!";
+        } catch (err) {
+          cvInput.value = rawText;
+          const errEl = document.getElementById('error-msg');
+          errEl.textContent = "⚠️ AI structuring failed (raw text saved). Error: " + err.message;
+          errEl.classList.remove('hidden');
+          saveStatus.textContent = "⚠️ AI structuring failed — check error below";
+          setTimeout(() => errEl.classList.add('hidden'), 15000);
+        }
+      } else {
         cvInput.value = rawText;
-        const errEl = document.getElementById('error-msg');
-        errEl.textContent = "⚠️ AI structuring failed (raw text saved). Error: " + err.message;
-        errEl.classList.remove('hidden');
-        saveStatus.textContent = "⚠️ AI structuring failed — check error below";
-        // Keep error visible until dismissed, auto-hide after 15s
-        setTimeout(() => errEl.classList.add('hidden'), 15000);
+        saveStatus.textContent = "📄 Raw PDF text loaded into text box";
+        saveStatus.classList.remove('hidden');
       }
     } else {
-      // No API key — save raw text and hint user
-      cvInput.value = rawText;
-      saveStatus.textContent = "📄 PDF extracted (set API Key in Settings to also auto-structure with AI)";
+      cvInput.value = originalCvText;
+      saveStatus.textContent = "📄 PDF saved (Text area unchanged)";
+      saveStatus.classList.remove('hidden');
     }
 
     // Save to storage
@@ -357,50 +421,97 @@ ${rawText}`;
 
   // ── Export Settings ──────────────────────────────────────────────────────────
   document.getElementById('export-btn').addEventListener('click', async () => {
-    const data = await chrome.storage.local.get(['apiKey', 'modelName', 'profile', 'cv']);
+    // Не экспортируем apiKey в целях безопасности!
+    const data = await chrome.storage.local.get(['modelName', 'profile', 'cv', 'cvPdfBase64', 'cvPdfName']);
     const json = JSON.stringify(data, null, 2);
+    
+    // Используем классический подход с Blob, так как chrome.downloads часто 
+    // ломает имя файла при вызове из popup расширения.
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
+    
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'auto-resume-filler-settings.json';
+    a.download = 'job-auto-applier-settings.json';
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    
+    // Удаляем элемент и очищаем память через 500мс
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 500);
   });
 
   // ── Import Settings ──────────────────────────────────────────────────────────
+  let pendingImportData = null;
+  const importModal = document.getElementById('import-modal');
+  
   document.getElementById('import-file').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     try {
       const text = await file.text();
-      const data = JSON.parse(text);
-
-      // Only import known keys
-      const allowed = ['apiKey', 'modelName', 'profile', 'cv'];
-      const toSave = {};
-      for (const key of allowed) {
-        if (data[key] !== undefined) toSave[key] = data[key];
-      }
-
-      await chrome.storage.local.set(toSave);
-
-      // Update UI fields
-      if (toSave.apiKey)    apiKeyInput.value   = toSave.apiKey;
-      if (toSave.modelName) modelNameInput.value = toSave.modelName;
-      if (toSave.profile)   profileInput.value  = toSave.profile;
-      if (toSave.cv)        cvInput.value       = toSave.cv;
-
-      const importStatus = document.getElementById('import-status');
-      importStatus.classList.remove('hidden');
-      setTimeout(() => importStatus.classList.add('hidden'), 2500);
+      pendingImportData = JSON.parse(text);
+      importModal.classList.remove('hidden');
     } catch (err) {
-      alert('Failed to import settings: ' + err.message);
+      alert('Failed to parse settings file: ' + err.message);
     }
 
     // Reset file input so the same file can be re-imported if needed
     e.target.value = '';
+  });
+
+  document.getElementById('cancel-import-btn').addEventListener('click', () => {
+    pendingImportData = null;
+    importModal.classList.add('hidden');
+  });
+
+  document.getElementById('confirm-import-btn').addEventListener('click', async () => {
+    if (!pendingImportData) return;
+
+    const toSave = {};
+    
+    if (document.getElementById('import-cb-profile').checked && pendingImportData.profile !== undefined) {
+      toSave.profile = pendingImportData.profile;
+      profileInput.value = toSave.profile;
+    }
+    
+    if (document.getElementById('import-cb-cv').checked && pendingImportData.cv !== undefined) {
+      toSave.cv = pendingImportData.cv;
+      cvInput.value = toSave.cv;
+    }
+    
+    if (document.getElementById('import-cb-pdf').checked && pendingImportData.cvPdfBase64 !== undefined) {
+      toSave.cvPdfBase64 = pendingImportData.cvPdfBase64;
+      if (pendingImportData.cvPdfName) {
+        toSave.cvPdfName = pendingImportData.cvPdfName;
+        document.getElementById('loaded-pdf-name').textContent = `Loaded: ${toSave.cvPdfName}`;
+      }
+    }
+    
+    if (document.getElementById('import-cb-model').checked && pendingImportData.modelName !== undefined) {
+      toSave.modelName = pendingImportData.modelName;
+      modelNameInput.value = toSave.modelName;
+    }
+    
+    // API key is never exported normally, but just in case it's in a manual json
+    if (pendingImportData.apiKey !== undefined && pendingImportData.apiKey !== '') {
+        // Only import if we actually want it, but we don't have a checkbox for it
+        // We'll just ignore it to be safe.
+    }
+
+    if (Object.keys(toSave).length > 0) {
+      await chrome.storage.local.set(toSave);
+      
+      const importStatus = document.getElementById('import-status');
+      importStatus.classList.remove('hidden');
+      setTimeout(() => importStatus.classList.add('hidden'), 2500);
+    }
+    
+    pendingImportData = null;
+    importModal.classList.add('hidden');
   });
 });
 
