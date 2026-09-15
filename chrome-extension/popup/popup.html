@@ -6,9 +6,12 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="tabs">
-    <button class="tab-btn active" data-target="generator-tab">Generator</button>
-    <button class="tab-btn" data-target="settings-tab">Settings</button>
+  <div class="header-container">
+    <div class="tabs">
+      <button class="tab-btn active" data-target="generator-tab">Generator</button>
+      <button class="tab-btn" data-target="settings-tab">Settings</button>
+    </div>
+    <button id="close-popup-btn" class="close-btn" title="Close window">&times;</button>
   </div>
 
   <div id="generator-tab" class="tab-content active">
@@ -40,16 +43,36 @@
     <textarea id="profile-text" rows="3" placeholder="E.g., I'm a Senior Frontend Engineer looking for remote work..."></textarea>
     
     <label for="cv-text">Your CV / Resume Text:</label>
-    <input type="file" id="cv-upload" accept="application/pdf" style="margin-bottom: 8px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+      <input type="file" id="cv-upload" accept="application/pdf">
+      <span id="loaded-pdf-name" style="font-size: 13px; color: #059669; font-weight: 500;"></span>
+    </div>
     <textarea id="cv-text" rows="12" placeholder="Paste your CV text here or upload a PDF above..."></textarea>
     <button id="restructure-btn" class="secondary-btn" style="width:100%; margin-bottom:12px;">🤖 Re-structure CV with AI</button>
 
     <div class="backup-row">
       <button id="export-btn" class="secondary-btn">⬇️ Export Settings</button>
       <label for="import-file" class="secondary-btn import-label">⬆️ Import Settings</label>
-      <input type="file" id="import-file" accept=".json" style="display:none;">
+      <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
     </div>
     <div id="import-status" class="status-msg hidden">Imported successfully!</div>
+  </div>
+
+  <!-- Import Selection Modal -->
+  <div id="import-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Select what to import:</h3>
+      <div class="checkbox-group">
+        <label><input type="checkbox" id="import-cb-profile" checked> Profile / Preferences</label>
+        <label><input type="checkbox" id="import-cb-cv" checked> CV / Resume Text</label>
+        <label><input type="checkbox" id="import-cb-pdf" checked> CV PDF File</label>
+        <label><input type="checkbox" id="import-cb-model" checked> Model Name</label>
+      </div>
+      <div class="modal-actions">
+        <button id="cancel-import-btn" class="secondary-btn">Cancel</button>
+        <button id="confirm-import-btn" class="primary-btn">Import Selected</button>
+      </div>
+    </div>
   </div>
 
   <script src="../lib/pdf.min.js"></script>

@@ -1,5 +1,14 @@
 # Release Notes
 
+## v1.3.0
+**Release Date:** September 15, 2026
+
+### Security & UX Improvements
+- **Security & Export Fixes:** Removed API Key from the settings export to prevent accidental leaks. Switched export logic to a robust `<a>` Blob download method that bypasses Chrome's popup UUID filename bug, ensuring `job-auto-applier-settings.json` is saved correctly. Added PDF Base64 string and file name to the export so users don't lose their auto-upload capability on a new device.
+- **Smart Import UI:** Replaced the silent settings overwrite with a dynamic modal dialog when importing a JSON file. Users can now selectively check which fields to import (Preferences, CV text, CV PDF File, Model Name).
+- **Safe PDF Upload Flow:** Added a custom AI confirmation modal when a user uploads a PDF. The extension now intelligently asks if you want to use AI to structure the CV, or if you just want to load the raw text (if no API key is provided). Clicking "Cancel" safely retains the existing text area while still storing the PDF in the background for auto-uploads.
+- **UI Polish:** Added an intuitive 'Close' (`✖`) button to the popup header. Added a real-time label indicating the name of the currently loaded PDF next to the upload button, persisting across popup restarts. Fixed macOS file picker restrictions by defining rigorous MIME types (`accept=".json,application/json"`).
+
 ## v1.2.0
 **Release Date:** September 15, 2026
 
