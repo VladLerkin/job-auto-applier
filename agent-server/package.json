@@ -1,6 +1,6 @@
 {
   "name": "agent-server",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Playwright AI Agent for Resume Autofill",
   "main": "src/server.js",
   "scripts": {

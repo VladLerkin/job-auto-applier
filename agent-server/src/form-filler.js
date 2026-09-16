@@ -104,13 +104,16 @@ async function executeAction(page, action) {
             await targetLocator.selectOption({ label: action.select }, { timeout: 2000 });
             await page.waitForTimeout(500);
         } else {
-            // 1. Click on the input to focus it
+            // 1. Click on the element to focus/open it
             await targetLocator.click({ timeout: 2000 });
             await page.waitForTimeout(300);
             
-            // 2. Clear existing value and type search text
-            await targetLocator.fill('', { timeout: 1000 });
-            await targetLocator.pressSequentially(action.search, { delay: 50, timeout: 5000 });
+            // 2. Clear existing value and type search text (only if it's an input)
+            const isInput = tagName === 'INPUT' || tagName === 'TEXTAREA';
+            if (isInput && action.search) {
+                await targetLocator.fill('', { timeout: 1000 });
+                await targetLocator.pressSequentially(action.search, { delay: 50, timeout: 5000 });
+            }
             
             // 3. Wait for dropdown options to appear
             await page.waitForTimeout(2000);

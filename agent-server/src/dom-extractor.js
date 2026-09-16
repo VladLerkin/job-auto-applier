@@ -12,7 +12,7 @@ const extractDOM = (frameId) => {
         // Clear old IDs inside this root (main document or shadow root)
         root.querySelectorAll('[data-arf-id]').forEach(el => el.removeAttribute('data-arf-id'));
         
-        const els = root.querySelectorAll('input, select, textarea, button, a, [role="button"], [role="combobox"], [role="listbox"], [role="option"], li, [tabindex="0"], spl-button, oc-button, [aria-label]');
+        const els = root.querySelectorAll('input, select, textarea, button, a, [role="button"], [role="combobox"], [role="listbox"], [role="option"], li, [tabindex="0"], spl-button, oc-button, [aria-label], .select-selected');
         els.forEach(el => allElements.push(el));
         
         const allNodes = root.querySelectorAll('*');
@@ -76,15 +76,34 @@ const extractDOM = (frameId) => {
         
         let optionsList = [];
         if (el.tagName === 'SELECT') {
-            optionsList = Array.from(el.options).map(o => o.text).filter(t => t);
+            optionsList = Array.from(el.options).map(o => o.text.trim()).filter(t => t);
         }
 
         let textContent = el.innerText || el.textContent || '';
         if (textContent) textContent = textContent.trim().substring(0, 100); // limit length
         
         // Capture role and aria-expanded to help identify combobox/dropdown fields
-        const role = el.getAttribute('role') || '';
+        let role = el.getAttribute('role') || '';
         const ariaExpanded = el.getAttribute('aria-expanded') || '';
+
+        if (el.classList.contains('select-selected')) {
+            role = 'combobox';
+            let p = el.parentElement;
+            if (p) {
+                let hiddenSelect = p.querySelector('select');
+                if (hiddenSelect) {
+                    if (!labelText) labelText = hiddenSelect.name || hiddenSelect.id || '';
+                    optionsList = Array.from(hiddenSelect.options).map(o => o.text.trim()).filter(t => t);
+                    try {
+                        const safeId = hiddenSelect.id ? hiddenSelect.id.replace(/"/g, '\\"') : '';
+                        if (safeId) {
+                            const label = el.getRootNode().querySelector(`label[for="${safeId}"]`);
+                            if (label) labelText = label.innerText;
+                        }
+                    } catch(e) {}
+                }
+            }
+        }
         
         let isChecked = false;
         if (el.type === 'radio' || el.type === 'checkbox') {
