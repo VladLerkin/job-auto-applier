@@ -1,5 +1,11 @@
 # Release Notes
 
+## v1.3.2
+**Release Date:** September 16, 2026
+
+### Documentation
+- **README Formatting:** Updated `README.md` title and formatting for better readability.
+
 ## v1.3.1
 **Release Date:** September 15, 2026
 
