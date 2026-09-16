@@ -1,5 +1,12 @@
 # Release Notes
 
+## v1.3.3
+**Release Date:** September 16, 2026
+
+### Bug Fixes & Improvements
+- **Custom Dropdown Support:** Improved `dom-extractor.js` to detect custom `div`-based dropdowns (e.g., `.select-selected` elements used for currency and years of experience fields). These are now correctly exposed to the LLM as `combobox` fields.
+- **Form Filler Action Fix:** Fixed an issue in `form-filler.js` where the agent would fail when trying to apply a `selectOption` action to a non-input custom dropdown. The agent now properly clicks to expand the dropdown and selects the appropriate option without trying to type text.
+
 ## v1.3.2
 **Release Date:** September 16, 2026
 
