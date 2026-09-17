@@ -1,5 +1,17 @@
 # Release Notes
 
+## v1.3.4
+**Release Date:** September 17, 2026
+
+### Features
+- **View Last Cover Letter:** Added a new button in the extension popup to easily view the last generated cover letter in a new tab.
+
+### Bug Fixes & Improvements
+- **React-Select Dropdowns:** Improved `dom-extractor.js` to correctly capture selected values from `react-select` components (common on Greenhouse) so the agent stops repeating already filled fields.
+- **Form Validation & Anti-Hallucination:** Added `maxLength` extraction for text inputs, and enforced strict LLM rules to respect limits and avoid hallucinating CV facts.
+- **Hostaway JD Extraction:** Fixed the URL parsing regex to support job slugs (not just UUIDs), enabling correct extraction of the full job description on Hostaway pages.
+- **Fatal API Errors:** The agent server now immediately halts and reports fatal API errors (like 429 Resource Exhausted) directly to the extension UI instead of silently looping.
+
 ## v1.3.3
 **Release Date:** September 16, 2026
 

@@ -120,6 +120,8 @@ async function executeAction(page, action) {
             
             // 4. Try to click the matching option using multiple strategies
             let optionClicked = false;
+            let matchText = action.select.toLowerCase();
+            let altMatchText = action.select.includes(',') ? action.select.split(',')[0].trim().toLowerCase() : null;
             
             // Strategy 1: Click by role="option"
             try {
@@ -131,31 +133,38 @@ async function executeAction(page, action) {
                 }
             } catch(e) { /* try next strategy */ }
             
-            // Strategy 2: Click by role="listbox" li items
+            // Strategy 2: Use getByText to find visible elements matching the text
             if (!optionClicked) {
                 try {
-                    const listItems = targetFrame.locator('[role="listbox"] li, [role="listbox"] [role="option"]');
-                    const count = await listItems.count();
+                    const textMatch = targetFrame.getByText(altMatchText || matchText);
+                    const count = await textMatch.count();
                     for (let i = 0; i < count; i++) {
-                        const text = await listItems.nth(i).innerText();
-                        if (text.includes(action.select)) {
-                            await listItems.nth(i).click({ force: true, timeout: 1000 });
-                            optionClicked = true;
-                            break;
+                        const el = textMatch.nth(i);
+                        if (await el.isVisible()) {
+                            const tagName = await el.evaluate(e => e.tagName).catch(()=>'');
+                            if (!['INPUT', 'TEXTAREA', 'FORM', 'BODY', 'HTML'].includes(tagName)) {
+                                const text = (await el.innerText()).toLowerCase().trim();
+                                if (text === matchText || text === altMatchText || text.startsWith(matchText) || (altMatchText && text.startsWith(altMatchText))) {
+                                    await el.click({ force: true, timeout: 1000 });
+                                    optionClicked = true;
+                                    break;
+                                }
+                            }
                         }
                     }
                 } catch(e) { /* try next strategy */ }
             }
             
-            // Strategy 3: Use getByText on the visible dropdown options
+            // Strategy 3: Click by common list item selectors
             if (!optionClicked) {
                 try {
-                    const textMatch = targetFrame.getByText(action.select, { exact: true });
-                    const handles = await textMatch.elementHandles();
-                    for (const handle of handles) {
-                        const isVisible = await handle.isVisible();
-                        if (isVisible) {
-                            await handle.click({ force: true, timeout: 1000 });
+                    const listItems = targetFrame.locator('[role="listbox"] li, [role="listbox"] [role="option"], [class*="dropdown"] li, [class*="dropdown"] a, [class*="menu"] li');
+                    const count = await listItems.count();
+                    for (let i = 0; i < count; i++) {
+                        const text = await listItems.nth(i).innerText();
+                        const optionText = text.toLowerCase().trim();
+                        if (optionText === matchText || optionText === altMatchText || optionText.startsWith(matchText) || (altMatchText && optionText.startsWith(altMatchText))) {
+                            await listItems.nth(i).click({ force: true, timeout: 1000 });
                             optionClicked = true;
                             break;
                         }
@@ -165,24 +174,29 @@ async function executeAction(page, action) {
             
             // Strategy 4: Fallback to Shadow DOM evaluate for the specific frame
             if (!optionClicked) {
-                optionClicked = await targetFrame.evaluate((selectText) => {
-                    function findOption(root, text) {
+                optionClicked = await targetFrame.evaluate(({selectText, altText}) => {
+                    function findOption(root, text, alt) {
                         const allNodes = root.querySelectorAll('*');
                         for (const node of allNodes) {
-                            if ((node.getAttribute('role') === 'option' || node.tagName === 'LI') && 
-                                (node.innerText || node.textContent || '').includes(text)) {
-                                node.click();
-                                return true;
+                            const tagName = node.tagName;
+                            if (!['INPUT', 'TEXTAREA', 'FORM', 'BODY', 'HTML'].includes(tagName)) {
+                                const nodeText = (node.innerText || node.textContent || '').toLowerCase().trim();
+                                if (nodeText === text || nodeText === alt || nodeText.startsWith(text) || (alt && nodeText.startsWith(alt))) {
+                                    if (node.children.length <= 2) {
+                                        node.click();
+                                        return true;
+                                    }
+                                }
                             }
                             if (node.shadowRoot) {
-                                const found = findOption(node.shadowRoot, text);
+                                const found = findOption(node.shadowRoot, text, alt);
                                 if (found) return true;
                             }
                         }
                         return false;
                     }
-                    return findOption(document, selectText);
-                }, action.select).catch(() => false);
+                    return findOption(document, selectText, altText);
+                }, { selectText: matchText, altText: altMatchText }).catch(() => false);
             }
             
             if (!optionClicked) {
@@ -235,7 +249,7 @@ Rules:
    - Any field with a search icon (🔍) or role="combobox" is a search dropdown.
    - You MUST use "selectOption": { "action": "selectOption", "id": "<field id>", "search": "<search text>", "select": "<option to click>" }
    - Country/Region: { "action": "selectOption", "id": "<id>", "search": "Georgia", "select": "Georgia" }
-   - City: { "action": "selectOption", "id": "<id>", "search": "Tbilisi", "select": "Tbilisi" }
+   - City/Location: Search using "City, Country" or just "City". For 'select', provide "City, Country" as well (e.g. "Tbilisi, Georgia"). The script will handle matching it to country codes like "GEO" automatically.
    - Title: Use a GENERIC title! Search "Software" and select "Software Developer" or "Software Engineer".
    - Company: If it has a search icon, use selectOption. Otherwise use fill.
    - Do NOT use "fill" for search dropdown fields!
@@ -265,7 +279,14 @@ Rules:
 
 10. Cover Letter: DO NOT fill — it is handled separately.
 
-11. WHEN DONE: When all fillable fields are complete and you have nothing more to do,
+11. STRICT TRUTHFULNESS: 
+    - NEVER invent or hallucinate facts, experiences, or projects that are not explicitly stated in the CV.
+    - If a custom question asks about an experience you don't have according to the CV, answer with "No commercial experience with this" or similar.
+
+12. LENGTH LIMITS: 
+    - If a field has a "maxLength" attribute, your response MUST NOT exceed this length in characters. Be concise.
+
+13. WHEN DONE: When all fillable fields are complete and you have nothing more to do,
     return { "done": true, "actions": [] } — this will STOP the agent and notify the user to review.
     DO NOT try to submit the form!
 
@@ -404,6 +425,14 @@ async function fillForm(page, { cvText, apiKey, modelName, profileText, isCancel
             
         } catch (stepError) {
             console.error(`Step ${step + 1} crashed:`, stepError.message);
+            
+            // Abort immediately on fatal API errors (e.g. out of credits, 429, invalid key)
+            const errMsg = (stepError.message || '').toLowerCase();
+            if (errMsg.includes('429') || errMsg.includes('resource_exhausted') || errMsg.includes('quota') || errMsg.includes('api key') || errMsg.includes('billing')) {
+                logToFile(`🛑 Fatal API Error: ${stepError.message}`);
+                return { success: false, error: `Fatal API Error: ${stepError.message}` };
+            }
+            
             previousErrors.push(`Step crashed: ${stepError.message}`);
         }
     }

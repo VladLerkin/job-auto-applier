@@ -86,6 +86,30 @@ const extractDOM = (frameId) => {
         let role = el.getAttribute('role') || '';
         const ariaExpanded = el.getAttribute('aria-expanded') || '';
 
+        // React-select support (Greenhouse and others)
+        let reactSelectValue = '';
+        if (el.tagName === 'INPUT' && (el.classList.contains('select__input') || (el.parentElement && el.parentElement.className && typeof el.parentElement.className === 'string' && el.parentElement.className.includes('select__input-container')) || el.closest('.select__value-container'))) {
+            const container = el.closest('.select__value-container') || (el.parentElement && el.parentElement.parentElement);
+            if (container) {
+                const singleValueDiv = container.querySelector('[class*="-singleValue"], [class*="__single-value"]');
+                if (singleValueDiv) {
+                    reactSelectValue = singleValueDiv.innerText || singleValueDiv.textContent || '';
+                }
+            }
+        }
+        
+        // Standard select support
+        if (el.tagName === 'SELECT' && el.selectedIndex >= 0) {
+            const selectedOption = el.options[el.selectedIndex];
+            if (selectedOption && selectedOption.text && !selectedOption.text.toLowerCase().includes('select')) {
+                reactSelectValue = selectedOption.text.trim();
+            }
+        }
+
+        if (reactSelectValue) {
+            textContent = reactSelectValue;
+        }
+
         if (el.classList.contains('select-selected')) {
             role = 'combobox';
             let p = el.parentElement;
@@ -108,6 +132,22 @@ const extractDOM = (frameId) => {
         let isChecked = false;
         if (el.type === 'radio' || el.type === 'checkbox') {
             isChecked = el.checked || false;
+        }
+        
+        if (!isChecked) {
+            const ariaPressed = el.getAttribute('aria-pressed');
+            const ariaChecked = el.getAttribute('aria-checked');
+            const ariaSelected = el.getAttribute('aria-selected');
+            const dataState = el.getAttribute('data-state');
+            const dataSelected = el.getAttribute('data-selected');
+            
+            isChecked = ariaPressed === 'true' || 
+                        ariaChecked === 'true' || 
+                        ariaSelected === 'true' || 
+                        dataState === 'checked' || 
+                        dataState === 'active' || 
+                        dataState === 'on' || 
+                        dataSelected === 'true';
         }
 
         // Provide parent context text for bare Yes/No buttons and radios/checkboxes
@@ -151,6 +191,9 @@ const extractDOM = (frameId) => {
             }
         }
 
+        let maxLength = el.getAttribute('maxlength');
+        if (maxLength) maxLength = parseInt(maxLength, 10);
+
         fields.push({
             id: uniqueId,
             tag: el.tagName.toLowerCase(),
@@ -164,6 +207,7 @@ const extractDOM = (frameId) => {
             context: contextText,
             role: role || '',
             ariaExpanded: ariaExpanded || '',
+            maxLength: maxLength || undefined,
             options: optionsList.length > 0 ? optionsList : undefined
         });
     });

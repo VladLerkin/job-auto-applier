@@ -8,3 +8,4 @@ agent-server/debug_*
 agent-server/*.html
 agent-server/*.png
 agent-server/*.pdf
+agent-server/workspace/
