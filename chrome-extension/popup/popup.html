@@ -36,11 +36,44 @@
       <div id="save-status" class="status-msg hidden">Saved successfully!</div>
     </div>
 
-    <label for="api-key">Gemini API Key:</label>
-    <input type="password" id="api-key" placeholder="Enter your API key">
-    
-    <label for="model-name">Model Name:</label>
-    <input type="text" id="model-name" placeholder="e.g., gemini-3.8-flash" value="gemini-3.8-flash">
+    <label for="ai-provider">AI Provider:</label>
+    <select id="ai-provider" style="width:100%; margin-bottom:12px; padding:8px; border:1px solid #d1d5db; border-radius:6px;">
+      <option value="gemini">Google Gemini (Cloud)</option>
+      <option value="local">Local Model (Free / node-llama-cpp)</option>
+    </select>
+
+    <div id="gemini-settings">
+      <label for="api-key">Gemini API Key:</label>
+      <input type="password" id="api-key" placeholder="Enter your API key">
+      
+      <label for="model-name">Gemini Model Name:</label>
+      <input type="text" id="model-name" placeholder="e.g., gemini-3.8-flash" value="gemini-3.8-flash">
+    </div>
+
+    <div id="local-settings" class="hidden" style="padding:10px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; margin-bottom:12px;">
+      <label for="local-model-url" style="font-size:13px;">GGUF Model Download URL (HuggingFace):</label>
+      <input type="text" id="local-model-url" placeholder="https://huggingface.co/.../resolve/main/model.gguf" value="https://huggingface.co/unsloth/gemma-4-E4B-it-qat-GGUF/resolve/main/gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf">
+      
+      <label for="local-model-filename" style="font-size:13px; margin-top:8px;">Save As (Filename):</label>
+      <input type="text" id="local-model-filename" placeholder="gemma-4-E4B.gguf" value="gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf">
+      
+      <div style="display: flex; gap: 8px; margin-top: 10px;">
+        <button id="download-model-btn" class="primary-btn" style="flex: 1; padding: 6px;">📥 Download</button>
+        <button id="test-model-btn" class="secondary-btn" style="flex: 1; padding: 6px;">⚙️ Test Model</button>
+      </div>
+      
+      <div id="download-progress-container" class="hidden" style="margin-top:10px;">
+        <div style="font-size:12px; margin-bottom:4px; display:flex; justify-content:space-between;">
+          <span id="download-status-text">Downloading...</span>
+          <span id="download-percentage">0%</span>
+        </div>
+        <div style="width:100%; background:#e5e7eb; border-radius:4px; height:8px;">
+          <div id="download-progress-bar" style="width:0%; background:#059669; height:100%; border-radius:4px; transition: width 0.3s;"></div>
+        </div>
+      </div>
+      <div id="test-model-status" style="font-size:13px; margin-top:8px; font-weight:500;"></div>
+    </div>
+
     
     <label for="profile-text">Your Profile / Preferences:</label>
     <textarea id="profile-text" rows="3" placeholder="E.g., I'm a Senior Frontend Engineer looking for remote work..."></textarea>

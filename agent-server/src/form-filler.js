@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { logToFile } = require('./logger');
 const { askGemini } = require('./gemini');
+const { askLocalLLM } = require('./local-llm');
 const { extractDOM } = require('./dom-extractor');
 
 /**
@@ -300,10 +301,10 @@ OR when finished:
 /**
  * Run the main 15-step form-filling loop.
  * @param {Object} page - Playwright page object
- * @param {Object} options - { cvText, apiKey, modelName, profileText, isCancelledFn }
+ * @param {Object} options - { cvText, apiKey, modelName, profileText, isCancelledFn, provider, localModelPath }
  * @returns {Object} { success, allActions, message }
  */
-async function fillForm(page, { cvText, apiKey, modelName, profileText, isCancelledFn }) {
+async function fillForm(page, { cvText, apiKey, modelName, profileText, isCancelledFn, provider = 'gemini', localModelPath = null }) {
     let allActions = [];
     let completedEntries = [];
     let previousErrors = [];
@@ -358,7 +359,13 @@ async function fillForm(page, { cvText, apiKey, modelName, profileText, isCancel
             
             const prompt = buildPrompt(step, cvText, profileText, domState, errorPrompt, actionSummary);
             
-            const result = await askGemini(prompt, apiKey, modelName);
+            let result;
+            if (provider === 'local') {
+                result = await askLocalLLM(prompt, localModelPath);
+            } else {
+                result = await askGemini(prompt, apiKey, modelName);
+            }
+            
             if (isCancelledFn()) {
                 logToFile('🛑 Agent loop cancelled by user (during LLM wait).');
                 return { success: false, error: 'Stopped by user' };

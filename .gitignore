@@ -11,3 +11,4 @@ agent-server/*.pdf
 agent-server/workspace/
 agent-server/models/
 models/
+test.gguf
