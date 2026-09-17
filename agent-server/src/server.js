@@ -41,6 +41,16 @@ app.post('/stop', (req, res) => {
     res.json({ success: true, message: 'Agent stopping...' });
 });
 
+// ── View Cover Letter endpoint ──────────────────────────────────────────────
+app.get('/cover-letter', (req, res) => {
+    const workspacePath = path.join(__dirname, '..', 'workspace', 'last_cover_letter.txt');
+    if (fs.existsSync(workspacePath)) {
+        res.sendFile(workspacePath);
+    } else {
+        res.status(404).send('No cover letter has been generated yet.');
+    }
+});
+
 // ── Main /fill endpoint ─────────────────────────────────────────────────────
 app.post('/fill', async (req, res) => {
     isCancelled = false;

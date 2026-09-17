@@ -77,9 +77,26 @@ async function findCoverLetterTextArea(page) {
             const matched = await ta.evaluate((el, kws) => {
                 let node = el.parentElement;
                 for (let depth = 0; depth < 6 && node; depth++, node = node.parentElement) {
-                    const labelEls = node.querySelectorAll('label');
+                    if (node.tagName === 'FORM' || node.tagName === 'BODY' || node.querySelectorAll('textarea, input[type="text"]').length > 2) {
+                        break; // Stop searching if we hit a large container or the form itself
+                    }
+
+                    const labelEls = node.querySelectorAll('label, [class*="label"]');
                     for (const label of labelEls) {
                         const text = (label.innerText || label.textContent || '').toLowerCase();
+                        if (kws.some(kw => text.includes(kw.toLowerCase()))) return true;
+                    }
+                    
+                    // Also check the direct text of the node (e.g., if label is just a div without a class)
+                    // We only check the first few characters to avoid matching huge parent containers
+                    let directText = "";
+                    for (let child of node.childNodes) {
+                        if (child.nodeType === 3) { // TEXT_NODE
+                            directText += child.nodeValue.trim() + " ";
+                        }
+                    }
+                    if (directText.trim()) {
+                        const text = directText.toLowerCase();
                         if (kws.some(kw => text.includes(kw.toLowerCase()))) return true;
                     }
                 }
@@ -182,12 +199,41 @@ async function handleResumeUpload(page, tempPdfPath) {
 async function handleCoverLetter(page, cvText, profileText, apiKey, modelName) {
     let coverLetterTempPdf = null;
     try {
-        const jobDescText = await page.evaluate(() => document.body.innerText.slice(0, 4000)).catch(() => '');
+        let jobDescText = await page.evaluate(() => document.body.innerText.slice(0, 4000)).catch(() => '');
+        
+        const currentUrl = page.url();
+        // Match both UUIDs (Lever/Ashby) and slugs (Hostaway) like "senior-backend-engineer-100-remote"
+        const hashMatch = currentUrl.match(/([a-zA-Z0-9-]{10,})\/([^\/]+)\/?$/);
+        if (hashMatch) {
+            const jobUrl = currentUrl.replace(new RegExp(`/${hashMatch[2]}/?$`), '');
+            try {
+                logToFile(`Fetching job description from: ${jobUrl}`);
+                const context = page.context();
+                const newPage = await context.newPage();
+                await newPage.goto(jobUrl, { waitUntil: 'domcontentloaded', timeout: 10000 });
+                const fullText = await newPage.evaluate(() => document.body.innerText).catch(() => '');
+                if (fullText.length > 500) {
+                    jobDescText = fullText.slice(0, 4000);
+                    logToFile('✅ Extracted job description from main job page');
+                }
+                await newPage.close();
+            } catch (e) {
+                logToFile(`⚠️ Failed to fetch main job page: ${e.message}`);
+            }
+        }
 
         const clTextArea = await findCoverLetterTextArea(page);
         if (clTextArea) {
             logToFile(`Cover letter TEXT field detected (maxLength: ${clTextArea.maxLength || 'none'}) — generating text...`);
             const clText = await generateCoverLetterText(cvText, jobDescText, profileText, apiKey, modelName, clTextArea.maxLength);
+            
+            // Save a copy for the user to review
+            const workspacePath = path.join(__dirname, '..', 'workspace');
+            if (!fs.existsSync(workspacePath)) {
+                fs.mkdirSync(workspacePath, { recursive: true });
+            }
+            fs.writeFileSync(path.join(workspacePath, 'last_cover_letter.txt'), clText, 'utf8');
+            
             await clTextArea.locator.fill(clText);
             await page.waitForTimeout(1000);
             logToFile('✅ Cover letter text pasted into text area');
@@ -196,6 +242,14 @@ async function handleCoverLetter(page, cvText, profileText, apiKey, modelName) {
             if (clFileInput) {
                 logToFile('Cover letter FILE input detected — generating cover letter PDF...');
                 const clText = await generateCoverLetterText(cvText, jobDescText, profileText, apiKey, modelName);
+                
+                // Save a copy for the user to review
+                const workspacePath = path.join(__dirname, '..', 'workspace');
+                if (!fs.existsSync(workspacePath)) {
+                    fs.mkdirSync(workspacePath, { recursive: true });
+                }
+                fs.writeFileSync(path.join(workspacePath, 'last_cover_letter.txt'), clText, 'utf8');
+                
                 const nameMatch = cvText.match(/==\s*PERSONAL INFO\s*==[\s\S]*?Full Name:\s*(.+)/i);
                 const candidateName = nameMatch ? nameMatch[1].trim() : '';
                 coverLetterTempPdf = await generateCoverLetterPdf(clText, candidateName);

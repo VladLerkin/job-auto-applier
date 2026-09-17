@@ -36,4 +36,13 @@ if [ ! -d "node_modules" ]; then
   npx -y playwright install chromium
 fi
 
-npm start || { echo "❌ Server crashed. Press ENTER to close this window."; read; }
+npm start || { echo "❌ Server crashed. Press ENTER to close this window."; read; exit 1; }
+
+echo ""
+echo "===================================================================="
+echo "🛑 Agent Server has gracefully shut down."
+echo "You can safely close this terminal window (Cmd + W)."
+echo "To start the agent again, just double-click 'Start Agent.command'."
+echo "===================================================================="
+echo ""
+read -p "Press ENTER to exit..."
