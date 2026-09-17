@@ -1,5 +1,19 @@
 # Release Notes
 
+## v1.3.5
+**Release Date:** September 17, 2026
+
+### Features
+- **Local LLM Integration:** Added full support for running GGUF quantized models completely locally (using `node-llama-cpp`), reducing API costs to zero.
+- **Model Downloader:** Added a built-in Hugging Face model downloader directly in the Chrome Extension UI, complete with a progress bar and HTTP range-request resume support.
+- **Model Tester:** Added a "Test Model" button to quickly load a `.gguf` file into memory and run a test query.
+- **Eval Test Suite:** Introduced a new testing framework (`tests/evals/`) to evaluate the agent against mock DOM snapshots (e.g., tricky Greenhouse React-Select forms) before running it live.
+
+### Bug Fixes & Improvements
+- **Hugging Face CloudFront Fix:** Fixed a 401 Unauthorized download issue caused by Hugging Face injecting ANSI terminal escape sequences into `Location` headers during redirect.
+- **node-llama-cpp v3 Compatibility:** Updated the internal agent-server API calls to be fully compatible with `node-llama-cpp` v3's ESM structure and class constructors.
+- **UI Settings Toggle:** Added an AI Provider dropdown to switch seamlessly between Google Gemini and the Local Model, hiding/showing relevant fields dynamically.
+
 ## v1.3.4
 **Release Date:** September 17, 2026
 

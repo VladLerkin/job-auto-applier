@@ -1,0 +1,51 @@
+{
+  "name": "Greenhouse AI Question",
+  "cvText": "== PERSONAL INFO ==\nFull Name: John Doe\nEmail: john@example.com\nPhone: +995 598 14 76 19\nLocation: Tbilisi, Georgia\n\n== EXPERIENCE ==\nSoftware Engineer at TechCorp (2020-2023)\n- Built an AI-powered customer support chatbot using LLMs in production.\n- Scaled the agentic system to handle 10k requests/day.",
+  "profileText": "Looking for remote roles only.",
+  "domState": [
+    {
+      "id": "agent-1",
+      "tag": "input",
+      "type": "text",
+      "label": "First Name*",
+      "value": "",
+      "text": ""
+    },
+    {
+      "id": "agent-2",
+      "tag": "input",
+      "type": "text",
+      "label": "Have you built and shipped an AI/LLM-powered or agentic system into production?*",
+      "value": "",
+      "text": "",
+      "role": "combobox",
+      "options": ["Yes", "No"]
+    },
+    {
+      "id": "agent-3",
+      "tag": "input",
+      "type": "text",
+      "label": "Tell us about the most sophisticated AI or agentic system you’ve built and shipped to production.*",
+      "value": "",
+      "text": "",
+      "maxLength": 100
+    }
+  ],
+  "expectedActions": [
+    {
+      "action": "fill",
+      "id": "agent-1",
+      "value": "John"
+    },
+    {
+      "action": "selectOption",
+      "id": "agent-2",
+      "search": "Yes",
+      "select": "Yes"
+    },
+    {
+      "action": "fill",
+      "id": "agent-3"
+    }
+  ]
+}

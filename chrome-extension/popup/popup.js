@@ -18,14 +18,36 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Load Settings
+  const aiProviderSelect = document.getElementById('ai-provider');
+  const geminiSettings = document.getElementById('gemini-settings');
+  const localSettings = document.getElementById('local-settings');
+  const localModelUrlInput = document.getElementById('local-model-url');
+  const localModelFilenameInput = document.getElementById('local-model-filename');
+
   const apiKeyInput = document.getElementById('api-key');
   const modelNameInput = document.getElementById('model-name');
   const profileInput = document.getElementById('profile-text');
   const cvInput = document.getElementById('cv-text');
   
+  aiProviderSelect.addEventListener('change', () => {
+    if (aiProviderSelect.value === 'local') {
+      geminiSettings.classList.add('hidden');
+      localSettings.classList.remove('hidden');
+    } else {
+      geminiSettings.classList.remove('hidden');
+      localSettings.classList.add('hidden');
+    }
+  });
+
   // ── Load saved settings on startup ─────────────────────────────────────────────
   async function loadSettings() {
-    const { apiKey, modelName, cv, profile, cvPdfName } = await chrome.storage.local.get(['apiKey', 'modelName', 'cv', 'profile', 'cvPdfName']);
+    const { apiKey, modelName, cv, profile, cvPdfName, aiProvider, localModelUrl, localModelFilename } = await chrome.storage.local.get(['apiKey', 'modelName', 'cv', 'profile', 'cvPdfName', 'aiProvider', 'localModelUrl', 'localModelFilename']);
+    if (aiProvider) {
+      aiProviderSelect.value = aiProvider;
+      aiProviderSelect.dispatchEvent(new Event('change'));
+    }
+    if (localModelUrl) localModelUrlInput.value = localModelUrl;
+    if (localModelFilename) localModelFilenameInput.value = localModelFilename;
     if (apiKey) apiKeyInput.value = apiKey;
     if (modelName) modelNameInput.value = modelName;
     if (profile) profileInput.value = profile;
@@ -38,18 +60,98 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Save Settings
   document.getElementById('save-settings-btn').addEventListener('click', () => {
+    const aiProvider = aiProviderSelect.value;
+    const localModelUrl = localModelUrlInput.value.trim();
+    const localModelFilename = localModelFilenameInput.value.trim();
     const apiKey = apiKeyInput.value.trim();
     const modelName = modelNameInput.value.trim() || 'gemini-3.8-flash';
     const profile = profileInput.value.trim();
     const cv = cvInput.value.trim();
 
-    chrome.storage.local.set({ apiKey, modelName, profile, cv }, () => {
+    chrome.storage.local.set({ apiKey, modelName, profile, cv, aiProvider, localModelUrl, localModelFilename }, () => {
       const status = document.getElementById('save-status');
       status.classList.remove('hidden');
       setTimeout(() => {
         status.classList.add('hidden');
       }, 2000);
     });
+  });
+
+  // ── Local Model Download & Test ──────────────────────────────────────────────
+  let downloadInterval;
+  document.getElementById('download-model-btn').addEventListener('click', async () => {
+    const url = localModelUrlInput.value.trim();
+    const filename = localModelFilenameInput.value.trim();
+    if (!url || !filename) return alert("Please enter both URL and filename");
+    
+    document.getElementById('download-progress-container').classList.remove('hidden');
+    document.getElementById('download-status-text').textContent = 'Starting download...';
+    
+    try {
+      const res = await fetch('http://localhost:3000/download-model', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, filename })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      
+      clearInterval(downloadInterval);
+      downloadInterval = setInterval(async () => {
+        try {
+          const sRes = await fetch('http://localhost:3000/download-status');
+          const sData = await sRes.json();
+          
+          if (sData.status === 'downloading' || sData.status === 'done') {
+            const pct = (sData.progress || 0).toFixed(1) + '%';
+            document.getElementById('download-percentage').textContent = pct;
+            document.getElementById('download-progress-bar').style.width = pct;
+            
+            if (sData.status === 'downloading') {
+              const mb = (sData.downloaded / (1024*1024)).toFixed(1);
+              const totalMb = sData.total ? (sData.total / (1024*1024)).toFixed(1) : '?';
+              document.getElementById('download-status-text').textContent = `Downloading (${mb} MB / ${totalMb} MB)`;
+            } else if (sData.status === 'done') {
+              document.getElementById('download-status-text').textContent = 'Download Complete!';
+              clearInterval(downloadInterval);
+            }
+          } else if (sData.status === 'error') {
+            document.getElementById('download-status-text').textContent = 'Error: ' + sData.error;
+            clearInterval(downloadInterval);
+          }
+        } catch(e) { /* ignore network error while checking status */ }
+      }, 1000);
+      
+    } catch (e) {
+      document.getElementById('download-status-text').textContent = "Server Error: " + e.message;
+    }
+  });
+
+  document.getElementById('test-model-btn').addEventListener('click', async () => {
+    const filename = localModelFilenameInput.value.trim();
+    if (!filename) return alert("Please specify a model filename");
+    
+    const statusDiv = document.getElementById('test-model-status');
+    statusDiv.textContent = '⏳ Loading model into memory and running test prompt... (this may take 10-30s)';
+    statusDiv.style.color = '#d97706';
+    
+    try {
+      const res = await fetch('http://localhost:3000/test-model', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ localModelPath: '../models/' + filename })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        statusDiv.textContent = '✅ Model is working perfectly!';
+        statusDiv.style.color = '#059669';
+      } else {
+        throw new Error(data.error || JSON.stringify(data));
+      }
+    } catch (e) {
+      statusDiv.textContent = '❌ Test failed: ' + e.message;
+      statusDiv.style.color = '#dc2626';
+    }
   });
 
   // Handle PDF Upload
@@ -345,9 +447,14 @@ ${rawText}`;
     errorMsg.classList.add('hidden');
     
     // Check if API key and CV exist
-    const { apiKey, modelName, cv, profile, cvPdfBase64, cvPdfName } = await chrome.storage.local.get(['apiKey', 'modelName', 'cv', 'profile', 'cvPdfBase64', 'cvPdfName']);
-    if (!apiKey || !cv) {
-      errorMsg.textContent = "Please set your API Key and CV in the Settings tab.";
+    const { apiKey, modelName, cv, profile, cvPdfBase64, cvPdfName, aiProvider, localModelFilename } = await chrome.storage.local.get(['apiKey', 'modelName', 'cv', 'profile', 'cvPdfBase64', 'cvPdfName', 'aiProvider', 'localModelFilename']);
+    if (!cv) {
+      errorMsg.textContent = "Please paste your CV text in the Settings tab.";
+      errorMsg.classList.remove('hidden');
+      return;
+    }
+    if (aiProvider !== 'local' && !apiKey) {
+      errorMsg.textContent = "Please set your Gemini API Key in the Settings tab.";
       errorMsg.classList.remove('hidden');
       return;
     }
@@ -379,7 +486,9 @@ ${rawText}`;
           profileText: profile,
           tabUrl: tabUrl,
           cvPdfBase64: cvPdfBase64 || null,
-          cvPdfName: cvPdfName || 'resume.pdf'
+          cvPdfName: cvPdfName || 'resume.pdf',
+          provider: aiProvider || 'gemini',
+          localModelPath: localModelFilename ? '../models/' + localModelFilename : null
         })
       });
 

@@ -56,10 +56,17 @@ app.post('/fill', async (req, res) => {
     isCancelled = false;
     resetInactivityTimer();
     
-    const { cvText, apiKey, modelName, profileText, tabUrl, cvPdfBase64, cvPdfName } = req.body;
+    let { cvText, apiKey, modelName, profileText, tabUrl, cvPdfBase64, cvPdfName, provider, localModelPath } = req.body;
     
-    if (!cvText || !apiKey) {
+    if (provider === 'gemini' && (!cvText || !apiKey)) {
         return res.status(400).json({ error: 'Missing cvText or apiKey' });
+    }
+    if (provider === 'local' && (!cvText || !localModelPath)) {
+        return res.status(400).json({ error: 'Missing cvText or localModelPath' });
+    }
+
+    if (provider === 'local' && localModelPath && !path.isAbsolute(localModelPath)) {
+        localModelPath = path.resolve(__dirname, '..', 'models', path.basename(localModelPath));
     }
 
     // Save PDF to a temp file if provided
@@ -121,6 +128,8 @@ app.post('/fill', async (req, res) => {
             apiKey,
             modelName,
             profileText,
+            provider: provider || 'gemini',
+            localModelPath,
             isCancelledFn: () => isCancelled
         });
 
@@ -153,6 +162,58 @@ app.post('/fill', async (req, res) => {
         if (coverLetterTempPdf && fs.existsSync(coverLetterTempPdf)) {
             try { fs.unlinkSync(coverLetterTempPdf); } catch(e) { /* ignore */ }
         }
+    }
+});
+
+// ── Local LLM Management Endpoints ──────────────────────────────────────────
+const { downloadModel, askLocalLLM } = require('./local-llm');
+let currentDownload = null;
+
+app.post('/download-model', async (req, res) => {
+    const { url, filename } = req.body;
+    if (!url || !filename) return res.status(400).json({ error: 'Missing url or filename' });
+    
+    const destPath = path.join(__dirname, '..', 'models', filename);
+    if (!fs.existsSync(path.dirname(destPath))) {
+        fs.mkdirSync(path.dirname(destPath), { recursive: true });
+    }
+    
+    if (currentDownload && currentDownload.status === 'downloading') {
+        return res.status(400).json({ error: 'A download is already in progress' });
+    }
+
+    currentDownload = { status: 'downloading', progress: 0, downloaded: 0, total: 0 };
+    
+    downloadModel(url, destPath, (progress, downloaded, total) => {
+        currentDownload.progress = progress;
+        currentDownload.downloaded = downloaded;
+        currentDownload.total = total;
+    }).then((filePath) => {
+        currentDownload = { status: 'done', progress: 100, filePath };
+    }).catch(err => {
+        currentDownload = { status: 'error', error: err.message };
+    });
+    
+    res.json({ success: true, message: 'Download started' });
+});
+
+app.get('/download-status', (req, res) => {
+    res.json(currentDownload || { status: 'none' });
+});
+
+app.post('/test-model', async (req, res) => {
+    let { localModelPath } = req.body;
+    if (!localModelPath) return res.status(400).json({ error: 'Missing localModelPath' });
+    
+    if (!path.isAbsolute(localModelPath)) {
+        localModelPath = path.resolve(__dirname, '..', 'models', path.basename(localModelPath));
+    }
+
+    try {
+        const result = await askLocalLLM('Respond strictly with this exact JSON: {"success": true}', localModelPath);
+        res.json({ success: true, result });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
