@@ -32,8 +32,16 @@ function resetInactivityTimer() {
 // Start timer on launch
 resetInactivityTimer();
 
-// ── Cancellation flag ───────────────────────────────────────────────────────
+// ── Cancellation flag & State ───────────────────────────────────────────────
 let isCancelled = false;
+let isFilling = false;
+const MAX_STEPS = parseInt(process.env.MAX_STEPS) || 10;
+let currentStep = 0;
+let totalSteps = MAX_STEPS;
+
+app.get('/fill-status', (req, res) => {
+    res.json({ isFilling, currentStep, totalSteps });
+});
 
 app.post('/stop', (req, res) => {
     isCancelled = true;
@@ -53,7 +61,13 @@ app.get('/cover-letter', (req, res) => {
 
 // ── Main /fill endpoint ─────────────────────────────────────────────────────
 app.post('/fill', async (req, res) => {
+    if (isFilling) {
+        return res.status(400).json({ error: 'Agent is already filling a form.' });
+    }
+
     isCancelled = false;
+    isFilling = true;
+    currentStep = 0;
     resetInactivityTimer();
     
     let { cvText, apiKey, modelName, profileText, tabUrl, cvPdfBase64, cvPdfName, provider, localModelPath } = req.body;
@@ -130,7 +144,12 @@ app.post('/fill', async (req, res) => {
             profileText,
             provider: provider || 'gemini',
             localModelPath,
-            isCancelledFn: () => isCancelled
+            maxSteps: MAX_STEPS,
+            isCancelledFn: () => isCancelled,
+            onProgress: (step, total) => {
+                currentStep = step;
+                totalSteps = total;
+            }
         });
 
         if (!result.success) {
@@ -162,6 +181,7 @@ app.post('/fill', async (req, res) => {
         if (coverLetterTempPdf && fs.existsSync(coverLetterTempPdf)) {
             try { fs.unlinkSync(coverLetterTempPdf); } catch(e) { /* ignore */ }
         }
+        isFilling = false;
     }
 });
 

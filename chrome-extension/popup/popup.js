@@ -58,6 +58,61 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   loadSettings();
 
+  // ── Check Server Status on Load ────────────────────────────────────────────────
+  async function checkServerStatus() {
+    try {
+      const res = await fetch('http://localhost:3000/fill-status');
+      const data = await res.json();
+      if (data.isFilling) {
+        document.getElementById('loading').classList.remove('hidden');
+        document.getElementById('generate-btn').classList.add('hidden');
+        document.getElementById('stop-btn').classList.remove('hidden');
+        document.getElementById('result-container').classList.add('hidden');
+        document.getElementById('error-msg').classList.add('hidden');
+        
+        if (data.currentStep && data.totalSteps) {
+          document.getElementById('loading-text').textContent = `Agent is filling the form... (Step ${data.currentStep} of ${data.totalSteps})`;
+        }
+        
+        pollFillStatus();
+      }
+    } catch (e) {
+      // server not running or not responding, ignore
+    }
+  }
+  
+  // To prevent multiple intervals
+  let pollInterval = null;
+
+  function pollFillStatus() {
+    if (pollInterval) clearInterval(pollInterval);
+    pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch('http://localhost:3000/fill-status');
+        const data = await res.json();
+        
+        if (data.isFilling) {
+          if (data.currentStep && data.totalSteps) {
+            document.getElementById('loading-text').textContent = `Agent is filling the form... (Step ${data.currentStep} of ${data.totalSteps})`;
+          }
+        } else {
+          clearInterval(pollInterval);
+          pollInterval = null;
+          document.getElementById('loading').classList.add('hidden');
+          document.getElementById('generate-btn').classList.remove('hidden');
+          document.getElementById('stop-btn').classList.add('hidden');
+          // Update the text only if we haven't received a response from the main fetch yet
+          // But main fetch will overwrite if needed.
+        }
+      } catch (e) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    }, 1500);
+  }
+
+  checkServerStatus();
+
   // Save Settings
   document.getElementById('save-settings-btn').addEventListener('click', () => {
     const aiProvider = aiProviderSelect.value;
@@ -470,8 +525,11 @@ ${rawText}`;
     }
 
     loadingDiv.classList.remove('hidden');
+    document.getElementById('loading-text').textContent = "Agent is filling the form... (Starting)";
     generateBtn.classList.add('hidden');
     stopBtn.classList.remove('hidden');
+
+    pollFillStatus();
 
     try {
       const response = await fetch('http://localhost:3000/fill', {
