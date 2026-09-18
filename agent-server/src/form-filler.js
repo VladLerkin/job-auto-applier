@@ -211,10 +211,10 @@ async function executeAction(page, action) {
 /**
  * Build the LLM prompt for a given step.
  */
-function buildPrompt(step, cvText, profileText, domState, errorPrompt, actionSummary) {
+function buildPrompt(step, maxSteps, cvText, profileText, domState, errorPrompt, actionSummary) {
     return `
 You are an autonomous web agent filling out a job application.
-Step ${step + 1} of 15.
+Step ${step + 1} of ${maxSteps}.
 ${errorPrompt}
 
 Here is the user's CV:
@@ -304,7 +304,7 @@ OR when finished:
  * @param {Object} options - { cvText, apiKey, modelName, profileText, isCancelledFn, provider, localModelPath }
  * @returns {Object} { success, allActions, message }
  */
-async function fillForm(page, { cvText, apiKey, modelName, profileText, isCancelledFn, provider = 'gemini', localModelPath = null }) {
+async function fillForm(page, { cvText, apiKey, modelName, profileText, isCancelledFn, provider = 'gemini', localModelPath = null, maxSteps = 10, onProgress }) {
     let allActions = [];
     let completedEntries = [];
     let previousErrors = [];
@@ -312,7 +312,8 @@ async function fillForm(page, { cvText, apiKey, modelName, profileText, isCancel
     let repeatedActionsCount = 0;
     let lastActionsStr = "";
     
-    for (let step = 0; step < 15; step++) {
+    for (let step = 0; step < maxSteps; step++) {
+        if (onProgress) onProgress(step + 1, maxSteps);
         if (isCancelledFn()) {
             logToFile('🛑 Agent loop cancelled by user.');
             return { success: false, error: 'Stopped by user' };
@@ -357,7 +358,7 @@ async function fillForm(page, { cvText, apiKey, modelName, profileText, isCancel
                 ? `Completed entries so far: ${completedEntries.join(', ')}` 
                 : 'No entries completed yet.';
             
-            const prompt = buildPrompt(step, cvText, profileText, domState, errorPrompt, actionSummary);
+            const prompt = buildPrompt(step, maxSteps, cvText, profileText, domState, errorPrompt, actionSummary);
             
             let result;
             if (provider === 'local') {

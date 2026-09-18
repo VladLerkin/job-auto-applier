@@ -46,7 +46,7 @@ job-auto-applier/
 │       └── pdf.worker.min.js          # PDF.js web worker
 │
 ├── agent-server/                      # Node.js Agent Server
-│   ├── .env                           # Environment config (timeout, browser mode)
+│   ├── .env                           # Environment config (timeout, max steps)
 │   ├── package.json                   # Dependencies & scripts
 │   ├── package-lock.json
 │   ├── src/                           # Application source code
@@ -55,7 +55,7 @@ job-auto-applier/
 │   │   ├── dom-extractor.js           # Browser-injectable DOM extraction function
 │   │   ├── form-filler.js             # 15-step agent loop, action execution, LLM prompt builder
 │   │   ├── file-handlers.js           # PDF upload, cover letter handling (text + PDF gen)
-│   │   ├── browser.js                 # Chrome launch (dedicated mode) & CDP connection
+│   │   ├── browser.js                 # Chrome launch & CDP connection
 │   │   └── logger.js                  # File logging utility
 │   └── tests/                         # Test scripts
 │       ├── test-chrome.js
@@ -97,7 +97,7 @@ A local Express server that drives browser automation via Playwright.
 | `dom-extractor.js` | `extractDOM()` — injected into browser pages via `page.evaluate()`, traverses DOM including Shadow DOM, returns structured field descriptors |
 | `form-filler.js` | Core agent loop (15 steps max): extracts DOM → builds prompt → calls Gemini → executes actions. Handles retries, error recovery, cancellation, stuck detection |
 | `file-handlers.js` | PDF resume upload, "Autofill from resume" detection, cover letter text area detection, cover letter PDF generation (pdfkit) |
-| `browser.js` | Chrome launch in dedicated mode (platform-aware), CDP connection via Playwright |
+| `browser.js` | Chrome launch (platform-aware), CDP connection via Playwright |
 | `logger.js` | Simple `logToFile()` utility — appends timestamped messages to `agent.log` |
 
 ## Data Flow

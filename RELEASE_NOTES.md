@@ -1,5 +1,16 @@
 # Release Notes
 
+## v1.3.6
+**Release Date:** September 18, 2026
+
+### Features
+- **Real-time Progress Tracking:** Added a live progress indicator ("Step X of Y") to the extension popup, making it easier to track the agent's progress during form filling.
+
+### Bug Fixes & Improvements
+- **Popup Stability Fix:** Fixed an issue where the extension popup would disappear during the "Autofill from resume" step on certain job boards (like Ashby) due to forced page reloads.
+- **Configurable Steps Limit:** The agent's maximum steps limit is now configurable via the `MAX_STEPS` environment variable (default reduced to 10 steps) to prevent unnecessary looping on completed forms.
+- **Cleanup:** Removed the deprecated `BROWSER_MODE` setting from the environment file and documentation.
+
 ## v1.3.5
 **Release Date:** September 17, 2026
 
