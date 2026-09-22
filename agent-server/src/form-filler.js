@@ -95,14 +95,46 @@ async function executeAction(page, action) {
         await page.waitForTimeout(1000);
 
     } else if (action.action === 'selectNative') {
-        await targetLocator.selectOption({ label: action.value }, { timeout: 2000 });
+        let selected = false;
+        const optionValue = await targetLocator.evaluate((selectNode, matchText) => {
+            if (!selectNode.options) return null;
+            const lowerMatch = matchText.toLowerCase().trim();
+            for (let opt of selectNode.options) {
+                if (opt.text.trim().toLowerCase() === lowerMatch) return opt.value;
+            }
+            for (let opt of selectNode.options) {
+                if (opt.text.trim().toLowerCase().includes(lowerMatch)) return opt.value;
+            }
+            return null;
+        }, action.value).catch(() => null);
+
+        if (optionValue !== null) {
+            try { await targetLocator.selectOption(optionValue, { timeout: 2000 }); selected = true; } catch(e) {}
+        }
+        if (!selected) await targetLocator.selectOption({ label: action.value }, { timeout: 2000 });
         await page.waitForTimeout(500);
 
     } else if (action.action === 'selectOption') {
         // Handle combobox/autocomplete fields (Country/Region, City with search)
         const tagName = await targetLocator.evaluate(el => el.tagName).catch(() => '');
         if (tagName === 'SELECT') {
-            await targetLocator.selectOption({ label: action.select }, { timeout: 2000 });
+            let selected = false;
+            const optionValue = await targetLocator.evaluate((selectNode, matchText) => {
+                if (!selectNode.options) return null;
+                const lowerMatch = matchText.toLowerCase().trim();
+                for (let opt of selectNode.options) {
+                    if (opt.text.trim().toLowerCase() === lowerMatch) return opt.value;
+                }
+                for (let opt of selectNode.options) {
+                    if (opt.text.trim().toLowerCase().includes(lowerMatch)) return opt.value;
+                }
+                return null;
+            }, action.select).catch(() => null);
+
+            if (optionValue !== null) {
+                try { await targetLocator.selectOption(optionValue, { timeout: 2000 }); selected = true; } catch(e) {}
+            }
+            if (!selected) await targetLocator.selectOption({ label: action.select }, { timeout: 2000 });
             await page.waitForTimeout(500);
         } else {
             // 1. Click on the element to focus/open it
@@ -334,7 +366,12 @@ async function fillForm(page, { cvText, apiKey, modelName, profileText, isCancel
                 }
             }
             
-            const hasFormFields = domState.some(el => ['input', 'textarea', 'select'].includes(el.tag) && el.type !== 'hidden');
+            const hasFormFields = domState.some(el => 
+                (['input', 'textarea', 'select'].includes(el.tag) && el.type !== 'hidden') ||
+                el.tag === 'button' ||
+                ['textbox', 'combobox', 'listbox', 'radio', 'checkbox'].includes(el.role) ||
+                el.tag.includes('-button')
+            );
             if (!hasFormFields) {
                 logToFile(`No interactive form fields found on step ${step+1}, waiting...`);
                 consecutiveEmptySteps++;
