@@ -1,5 +1,11 @@
 # Release Notes
 
+## v1.3.7
+**Release Date:** September 22, 2026
+
+### Bug Fixes & Improvements
+- **Form Filling Reliability:** Improved the agent's ability to detect interactive form fields and handle complex dropdown options more reliably.
+
 ## v1.3.6
 **Release Date:** September 18, 2026
 
