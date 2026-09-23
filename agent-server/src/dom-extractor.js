@@ -74,6 +74,21 @@ const extractDOM = (frameId) => {
         if (!labelText) labelText = el.getAttribute('aria-label') || '';
         if (!labelText) labelText = el.name || '';
         
+        // Fallback for unlabeled textareas or inputs: look at preceding elements
+        if (!labelText && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT')) {
+            let node = el.parentElement;
+            for(let i=0; i<5 && node; i++) {
+                if (node.previousElementSibling) {
+                    let txt = (node.previousElementSibling.innerText || node.previousElementSibling.textContent || '').replace(/SVGs not supported by this browser\./g, '').trim();
+                    if (txt && txt.length > 2 && txt.length < 200) {
+                        labelText = txt.split('\n')[0]; // take first line
+                        break;
+                    }
+                }
+                node = node.parentElement;
+            }
+        }
+        
         let optionsList = [];
         if (el.tagName === 'SELECT') {
             optionsList = Array.from(el.options).map(o => o.text.trim()).filter(t => t);

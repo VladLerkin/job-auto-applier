@@ -1,5 +1,12 @@
 # Release Notes
 
+## v1.3.8
+**Release Date:** September 24, 2026
+
+### Cleanup & Maintenance
+- **Workspace Cleanup:** Reorganized the project workspace by moving test scripts (`test-*.js`) to the `agent-server/tests` folder.
+- **Removed Unused Files:** Deleted unused HTML dumps and utility scripts (`smartrecruiters_dump.html`, `formatted.html`, `lever_form.html`, `fix_git.sh`) to reduce clutter.
+
 ## v1.3.7
 **Release Date:** September 22, 2026
 
