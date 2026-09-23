@@ -175,12 +175,9 @@ app.post('/fill', async (req, res) => {
         if (browser) {
             try { await browser.disconnect(); } catch(e) { /* ignore */ }
         }
-        if (tempPdfPath && fs.existsSync(tempPdfPath)) {
-            try { fs.unlinkSync(tempPdfPath); } catch(e) { /* ignore */ }
-        }
-        if (coverLetterTempPdf && fs.existsSync(coverLetterTempPdf)) {
-            try { fs.unlinkSync(coverLetterTempPdf); } catch(e) { /* ignore */ }
-        }
+        // We DO NOT delete tempPdfPath or coverLetterTempPdf here.
+        // The user's browser needs to access these files from disk when they manually click "Submit".
+        // Deleting them prematurely causes the browser upload to fail with ERR_FILE_NOT_FOUND.
         isFilling = false;
     }
 });

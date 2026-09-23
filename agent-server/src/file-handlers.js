@@ -29,13 +29,16 @@ async function findLabelledFileInput(page, keywords) {
             const matched = await input.evaluate((el, kws) => {
                 // Walk up to find a common ancestor that also contains a label sibling
                 let node = el.parentElement;
-                for (let depth = 0; depth < 6 && node; depth++, node = node.parentElement) {
-                    const labelEls = node.querySelectorAll('label');
+                for (let depth = 0; depth < 10 && node; depth++, node = node.parentElement) {
+                    const labelEls = node.querySelectorAll('label, span, div, h3, h4');
                     for (const label of labelEls) {
                         const text = (label.innerText || label.textContent || '').toLowerCase();
                         if (kws.some(kw => text.includes(kw.toLowerCase()))) return true;
                     }
-                    // Also check the node's own text (excluding inputs/buttons)
+                    if (node.previousElementSibling) {
+                        const prevText = (node.previousElementSibling.innerText || node.previousElementSibling.textContent || '').toLowerCase();
+                        if (kws.some(kw => prevText.includes(kw.toLowerCase()))) return true;
+                    }
                     const nodeText = (node.innerText || '').toLowerCase();
                     if (kws.some(kw => nodeText.includes(kw.toLowerCase()))) return true;
                 }
@@ -222,7 +225,22 @@ async function handleCoverLetter(page, cvText, profileText, apiKey, modelName) {
             }
         }
 
-        const clTextArea = await findCoverLetterTextArea(page);
+        let clTextArea = await findCoverLetterTextArea(page);
+        let clFileInput = null;
+        
+        if (!clTextArea) {
+            clFileInput = await findLabelledFileInput(page, ['cover letter', 'cover_letter', 'coverletter', 'cover', 'letter', 'motivation']);
+        }
+        
+        if (!clTextArea && !clFileInput) {
+            logToFile('No cover letter field detected initially. Waiting 4s for ATS resume parsing to finish...');
+            await page.waitForTimeout(4000);
+            clTextArea = await findCoverLetterTextArea(page);
+            if (!clTextArea) {
+                clFileInput = await findLabelledFileInput(page, ['cover letter', 'cover_letter', 'coverletter', 'cover', 'letter', 'motivation']);
+            }
+        }
+
         if (clTextArea) {
             logToFile(`Cover letter TEXT field detected (maxLength: ${clTextArea.maxLength || 'none'}) — generating text...`);
             const clText = await generateCoverLetterText(cvText, jobDescText, profileText, apiKey, modelName, clTextArea.maxLength);
@@ -237,28 +255,25 @@ async function handleCoverLetter(page, cvText, profileText, apiKey, modelName) {
             await clTextArea.locator.fill(clText);
             await page.waitForTimeout(1000);
             logToFile('✅ Cover letter text pasted into text area');
-        } else {
-            const clFileInput = await findLabelledFileInput(page, ['cover letter', 'cover_letter', 'coverletter', 'cover', 'letter', 'motivation']);
-            if (clFileInput) {
-                logToFile('Cover letter FILE input detected — generating cover letter PDF...');
-                const clText = await generateCoverLetterText(cvText, jobDescText, profileText, apiKey, modelName);
-                
-                // Save a copy for the user to review
-                const workspacePath = path.join(__dirname, '..', 'workspace');
-                if (!fs.existsSync(workspacePath)) {
-                    fs.mkdirSync(workspacePath, { recursive: true });
-                }
-                fs.writeFileSync(path.join(workspacePath, 'last_cover_letter.txt'), clText, 'utf8');
-                
-                const nameMatch = cvText.match(/==\s*PERSONAL INFO\s*==[\s\S]*?Full Name:\s*(.+)/i);
-                const candidateName = nameMatch ? nameMatch[1].trim() : '';
-                coverLetterTempPdf = await generateCoverLetterPdf(clText, candidateName);
-                await clFileInput.locator.setInputFiles(coverLetterTempPdf);
-                await page.waitForTimeout(2000);
-                logToFile('✅ Cover letter PDF uploaded');
-            } else {
-                logToFile('No cover letter field detected on this page');
+        } else if (clFileInput) {
+            logToFile('Cover letter FILE input detected — generating cover letter PDF...');
+            const clText = await generateCoverLetterText(cvText, jobDescText, profileText, apiKey, modelName);
+            
+            // Save a copy for the user to review
+            const workspacePath = path.join(__dirname, '..', 'workspace');
+            if (!fs.existsSync(workspacePath)) {
+                fs.mkdirSync(workspacePath, { recursive: true });
             }
+            fs.writeFileSync(path.join(workspacePath, 'last_cover_letter.txt'), clText, 'utf8');
+            
+            const nameMatch = cvText.match(/==\s*PERSONAL INFO\s*==[\s\S]*?Full Name:\s*(.+)/i);
+            const candidateName = nameMatch ? nameMatch[1].trim() : '';
+            coverLetterTempPdf = await generateCoverLetterPdf(clText, candidateName);
+            await clFileInput.locator.setInputFiles(coverLetterTempPdf);
+            await page.waitForTimeout(2000);
+            logToFile('✅ Cover letter PDF uploaded');
+        } else {
+            logToFile('No cover letter field detected on this page');
         }
     } catch (e) {
         logToFile(`⚠️ Cover letter handling failed: ${e.message}`);
