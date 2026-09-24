@@ -28,7 +28,8 @@ async function executeAction(page, action) {
 
     if (action.action === 'fill') {
         try {
-            if (action.value.length > 50) {
+            const inputType = await targetLocator.evaluate(el => el.type).catch(() => '');
+            if (action.value.length > 50 || ['date', 'month', 'time'].includes(inputType)) {
                 await targetLocator.fill(action.value, { timeout: 1000 });
             } else {
                 await targetLocator.fill('', { timeout: 1000 }); // Clear first
@@ -295,11 +296,11 @@ Rules:
 6. Phone Country Code: click "Country code" button, then clickText the correct country.
 
 7. DATES - CRITICAL:
-   - Format: YYYY-MM-DD
+   - LOOK AT THE FIELD'S placeholder, label, or type to determine the format!
+   - If the field expects MM/YYYY or MM/YY, use that exact format (e.g. "06/2023").
+   - If the field is just for a "Year", output the 4-digit year (e.g. "2023").
+   - If it's a standard date field (YYYY-MM-DD) or has no specific format indication, use YYYY-MM-DD.
    - Extract the EXACT month from the CV. NEVER default to January (01) unless CV only says a year!
-   - FROM dates: use day 01. Example: "June 2023" → "2023-06-01"
-   - TO dates: use LAST day of month. Example: "March 2020" → "2020-03-31"
-   - Last days: Jan=31, Feb=28, Mar=31, Apr=30, May=31, Jun=30, Jul=31, Aug=31, Sep=30, Oct=31, Nov=30, Dec=31
    - For current jobs: check "I currently work here" checkbox.
 
 8. EXPERIENCE - Fill the LAST 4 jobs from the CV, starting with the OLDEST first:

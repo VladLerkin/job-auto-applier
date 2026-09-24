@@ -27,9 +27,31 @@ async function findLabelledFileInput(page, keywords) {
         for (let i = 0; i < count; i++) {
             const input = fileInputs.nth(i);
             const matched = await input.evaluate((el, kws) => {
-                // Walk up to find a common ancestor that also contains a label sibling
+                // 1. Check direct label by ID
+                if (el.id) {
+                    try {
+                        const safeId = el.id.replace(/"/g, '\\"');
+                        const label = document.querySelector(`label[for="${safeId}"]`);
+                        if (label) {
+                            const text = (label.innerText || label.textContent || '').toLowerCase();
+                            if (kws.some(kw => text.includes(kw.toLowerCase()))) return true;
+                        }
+                    } catch(e) {}
+                }
+                
+                // 2. Check if wrapped in a label
+                const parentLabel = el.closest('label');
+                if (parentLabel) {
+                    const text = (parentLabel.innerText || parentLabel.textContent || '').toLowerCase();
+                    if (kws.some(kw => text.includes(kw.toLowerCase()))) return true;
+                }
+
+                // 3. Walk up the DOM to find sibling text, but STOP if ancestor contains multiple file inputs
                 let node = el.parentElement;
-                for (let depth = 0; depth < 10 && node; depth++, node = node.parentElement) {
+                for (let depth = 0; depth < 6 && node; depth++, node = node.parentElement) {
+                    if (node.tagName === 'FORM' || node.tagName === 'BODY') break;
+                    if (node.querySelectorAll('input[type="file"]').length > 1) break;
+
                     const labelEls = node.querySelectorAll('label, span, div, h3, h4');
                     for (const label of labelEls) {
                         const text = (label.innerText || label.textContent || '').toLowerCase();
