@@ -1,5 +1,13 @@
 # Release Notes
 
+## v1.3.9
+**Release Date:** September 24, 2026
+
+### Bug Fixes & Improvements
+- **Date Field Formatting:** Updated the LLM prompt to correctly interpret expected date formats (e.g. MM/YYYY) based on the field's placeholder or label, fixing an issue where dates like `2023-06-01` would misalign with custom masks on sites like IBM Careers (resulting in years like `0023`).
+- **Native Date Inputs:** Replaced the `.pressSequentially()` method with `.fill()` for native HTML fields (type="date", "month", "time") to ensure better compatibility across job boards. Added a dedicated `test-date-logic.js` test suite.
+- **Strict File Upload Scoping:** Fixed a bug in `file-handlers.js` where the DOM search algorithm traversed too high, causing the generated Cover Letter PDF to mistakenly upload into the "Resume" file input field if both fields shared a large container.
+
 ## v1.3.8
 **Release Date:** September 24, 2026
 
