@@ -1,5 +1,13 @@
 # Release Notes
 
+## v1.3.10
+**Release Date:** September 25, 2026
+
+### Bug Fixes & Improvements
+- **Shadow DOM File Upload Fix:** Fixed an issue on ATS platforms (like HireHive) where the cover letter falsely matched the resume field due to CSS properties containing the keyword 'letter'.
+- **Enhanced DOM Traversal:** Improved DOM traversal for file inputs hidden inside Shadow DOM components (like custom `<hh-file-upload>` elements) to correctly map them to labels located in the regular Light DOM.
+- **Test Coverage:** Added robust test coverage (`test-file-handlers.js`) to ensure Shadow DOM traversal logic remains stable and false positives from hidden `<style>` text are prevented.
+
 ## v1.3.9
 **Release Date:** September 24, 2026
 
