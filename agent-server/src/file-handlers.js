@@ -47,22 +47,24 @@ async function findLabelledFileInput(page, keywords) {
                 }
 
                 // 3. Walk up the DOM to find sibling text, but STOP if ancestor contains multiple file inputs
-                let node = el.parentElement;
-                for (let depth = 0; depth < 6 && node; depth++, node = node.parentElement) {
+                let node = el.parentElement || (el.getRootNode && el.getRootNode().host) || null;
+                for (let depth = 0; depth < 8 && node; depth++) {
                     if (node.tagName === 'FORM' || node.tagName === 'BODY') break;
-                    if (node.querySelectorAll('input[type="file"]').length > 1) break;
+                    if (node.querySelectorAll && node.querySelectorAll('input[type="file"]').length > 1) break;
 
-                    const labelEls = node.querySelectorAll('label, span, div, h3, h4');
+                    const labelEls = node.querySelectorAll ? node.querySelectorAll('label, span, div, h3, h4') : [];
                     for (const label of labelEls) {
-                        const text = (label.innerText || label.textContent || '').toLowerCase();
+                        const text = (label.innerText || '').toLowerCase();
                         if (kws.some(kw => text.includes(kw.toLowerCase()))) return true;
                     }
                     if (node.previousElementSibling) {
-                        const prevText = (node.previousElementSibling.innerText || node.previousElementSibling.textContent || '').toLowerCase();
+                        const prevText = (node.previousElementSibling.innerText || '').toLowerCase();
                         if (kws.some(kw => prevText.includes(kw.toLowerCase()))) return true;
                     }
                     const nodeText = (node.innerText || '').toLowerCase();
                     if (kws.some(kw => nodeText.includes(kw.toLowerCase()))) return true;
+
+                    node = node.parentElement || (node.getRootNode && node.getRootNode().host) || null;
                 }
                 return false;
             }, keywords).catch(() => false);
@@ -76,7 +78,7 @@ async function findLabelledFileInput(page, keywords) {
  * Find a textarea (or text input) for cover letter entry.
  */
 async function findCoverLetterTextArea(page) {
-    const coverKeywords = ['cover letter', 'cover_letter', 'coverletter', 'motivation', 'letter', 'fit for this role', 'why would you be a fit', 'why are you a fit', 'message to hiring manager', 'message to the hiring manager', 'additional information'];
+    const coverKeywords = ['cover letter', 'cover_letter', 'coverletter', 'motivation', 'fit for this role', 'why would you be a fit', 'why are you a fit', 'message to hiring manager', 'message to the hiring manager', 'additional information'];
     for (const frame of page.frames()) {
         // Strategy 1: attribute-based
         for (const kw of coverKeywords) {
@@ -100,15 +102,15 @@ async function findCoverLetterTextArea(page) {
             if (!isVis) continue; // Skip hidden textareas like recaptcha
 
             const matched = await ta.evaluate((el, kws) => {
-                let node = el.parentElement;
-                for (let depth = 0; depth < 6 && node; depth++, node = node.parentElement) {
-                    if (node.tagName === 'FORM' || node.tagName === 'BODY' || node.querySelectorAll('textarea, input[type="text"]').length > 2) {
+                let node = el.parentElement || (el.getRootNode && el.getRootNode().host) || null;
+                for (let depth = 0; depth < 8 && node; depth++) {
+                    if (node.tagName === 'FORM' || node.tagName === 'BODY' || (node.querySelectorAll && node.querySelectorAll('textarea, input[type="text"]').length > 2)) {
                         break; // Stop searching if we hit a large container or the form itself
                     }
 
-                    const labelEls = node.querySelectorAll('label, [class*="label"]');
+                    const labelEls = node.querySelectorAll ? node.querySelectorAll('label, [class*="label"]') : [];
                     for (const label of labelEls) {
-                        const text = (label.innerText || label.textContent || '').toLowerCase();
+                        const text = (label.innerText || '').toLowerCase();
                         if (kws.some(kw => text.includes(kw.toLowerCase()))) return true;
                     }
                     
@@ -124,6 +126,7 @@ async function findCoverLetterTextArea(page) {
                         const text = directText.toLowerCase();
                         if (kws.some(kw => text.includes(kw.toLowerCase()))) return true;
                     }
+                    node = node.parentElement || (node.getRootNode && node.getRootNode().host) || null;
                 }
                 return false;
             }, coverKeywords).catch(() => false);
@@ -173,10 +176,11 @@ async function handleAutofillFromResume(page, tempPdfPath) {
             for (let fi = 0; fi < fileCount; fi++) {
                 const inp = allFileInputs.nth(fi);
                 const isAutofill = await inp.evaluate(el => {
-                    let node = el.parentElement;
-                    for (let d = 0; d < 8 && node; d++, node = node.parentElement) {
+                    let node = el.parentElement || (el.getRootNode && el.getRootNode().host) || null;
+                    for (let d = 0; d < 8 && node; d++) {
                         const t = (node.innerText || node.textContent || '').toLowerCase();
                         if (t.includes('autofill') || t.includes('auto-fill') || t.includes('auto fill') || t.includes('upload resume') || t.includes('apply with resume') || t.includes('parse resume')) return true;
+                        node = node.parentElement || (node.getRootNode && node.getRootNode().host) || null;
                     }
                     return false;
                 }).catch(() => false);
@@ -251,7 +255,7 @@ async function handleCoverLetter(page, cvText, profileText, apiKey, modelName) {
         let clFileInput = null;
         
         if (!clTextArea) {
-            clFileInput = await findLabelledFileInput(page, ['cover letter', 'cover_letter', 'coverletter', 'cover', 'letter', 'motivation']);
+            clFileInput = await findLabelledFileInput(page, ['cover letter', 'cover_letter', 'coverletter', 'motivation letter', 'motivation']);
         }
         
         if (!clTextArea && !clFileInput) {
@@ -259,7 +263,7 @@ async function handleCoverLetter(page, cvText, profileText, apiKey, modelName) {
             await page.waitForTimeout(4000);
             clTextArea = await findCoverLetterTextArea(page);
             if (!clTextArea) {
-                clFileInput = await findLabelledFileInput(page, ['cover letter', 'cover_letter', 'coverletter', 'cover', 'letter', 'motivation']);
+                clFileInput = await findLabelledFileInput(page, ['cover letter', 'cover_letter', 'coverletter', 'motivation letter', 'motivation']);
             }
         }
 
