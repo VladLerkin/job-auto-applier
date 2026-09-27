@@ -1,5 +1,11 @@
 # Release Notes
 
+## v1.3.11
+**Release Date:** September 27, 2026
+
+### Bug Fixes & Improvements
+- **Resume Upload UI State:** Fixed an issue where uploading the resume to a hidden input didn't trigger the website's UI updates correctly. The agent now explicitly clicks "Attach/Upload resume" buttons before uploading the file to ensure the UI is in the correct state.
+
 ## v1.3.10
 **Release Date:** September 25, 2026
 

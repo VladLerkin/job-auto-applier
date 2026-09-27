@@ -208,6 +208,20 @@ async function handleAutofillFromResume(page, tempPdfPath) {
 async function handleResumeUpload(page, tempPdfPath) {
     try {
         logToFile('Attempting to auto-upload PDF resume...');
+
+        // Try to click "Attach" or "Upload" buttons to make the file input visible and activate UI logic
+        for (const frame of page.frames()) {
+            const attachBtns = frame.locator('a, button, [role="button"]').filter({ hasText: /(attach|upload|choose).*resume/i });
+            const count = await attachBtns.count().catch(() => 0);
+            for (let i = 0; i < count; i++) {
+                const btn = attachBtns.nth(i);
+                if (await btn.isVisible().catch(() => false)) {
+                    await btn.click({ force: true, timeout: 1000 }).catch(() => {});
+                    await page.waitForTimeout(500);
+                }
+            }
+        }
+
         const resumeInput = await findLabelledFileInput(page, ['resume', 'cv']);
         if (resumeInput) {
             await resumeInput.locator.setInputFiles(tempPdfPath);
