@@ -1,5 +1,12 @@
 # Release Notes
 
+## v1.3.12
+**Release Date:** September 28, 2026
+
+### Bug Fixes & Improvements
+- **Cover Letter Upload Fix:** Fixed an issue where the auto-applier would incorrectly upload the cover letter into the resume field on certain ATS (e.g., Ashby HQ) due to false-positive matching of generic text blocks containing the words 'cover letter'.
+
+
 ## v1.3.11
 **Release Date:** September 27, 2026
 

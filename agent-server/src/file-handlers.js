@@ -54,15 +54,27 @@ async function findLabelledFileInput(page, keywords) {
 
                     const labelEls = node.querySelectorAll ? node.querySelectorAll('label, span, div, h3, h4') : [];
                     for (const label of labelEls) {
-                        const text = (label.innerText || '').toLowerCase();
-                        if (kws.some(kw => text.includes(kw.toLowerCase()))) return true;
+                        const text = (label.innerText || '').toLowerCase().trim();
+                        if (text.length > 0 && text.length < 150 && kws.some(kw => text.includes(kw.toLowerCase()))) return true;
                     }
                     if (node.previousElementSibling) {
-                        const prevText = (node.previousElementSibling.innerText || '').toLowerCase();
-                        if (kws.some(kw => prevText.includes(kw.toLowerCase()))) return true;
+                        const prevText = (node.previousElementSibling.innerText || '').toLowerCase().trim();
+                        if (prevText.length > 0 && prevText.length < 150 && kws.some(kw => prevText.includes(kw.toLowerCase()))) return true;
                     }
-                    const nodeText = (node.innerText || '').toLowerCase();
-                    if (kws.some(kw => nodeText.includes(kw.toLowerCase()))) return true;
+                    
+                    let directText = "";
+                    for (let child of node.childNodes) {
+                        if (child.nodeType === 3) { // TEXT_NODE
+                            directText += child.nodeValue.trim() + " ";
+                        }
+                    }
+                    if (directText.trim()) {
+                        const text = directText.toLowerCase();
+                        if (text.length < 150 && kws.some(kw => text.includes(kw.toLowerCase()))) return true;
+                    }
+                    
+                    const nodeText = (node.innerText || '').toLowerCase().trim();
+                    if (nodeText.length > 0 && nodeText.length < 150 && kws.some(kw => nodeText.includes(kw.toLowerCase()))) return true;
 
                     node = node.parentElement || (node.getRootNode && node.getRootNode().host) || null;
                 }
