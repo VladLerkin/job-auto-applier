@@ -10,8 +10,8 @@
 │  (chrome-extension/) │  POST /fill, POST /stop             │  (agent-server/)     │
 │                      │  ←───────────────────────────────── │                      │
 │  • Popup UI          │  JSON response                      │  • Playwright        │
-│  • Settings mgmt     │                                     │  • Gemini API        │
-│  • PDF parsing       │                                     │  • Form filling loop │
+│  • Settings mgmt     │                                     │  • TypeSafe AI (Jev) │
+│  • PDF parsing       │                                     │  • Gemini API        │
 └──────────────────────┘                                     └──────┬───────────────┘
                                                                     │
                                                          CDP (port 9222)
@@ -95,7 +95,7 @@ A local Express server that drives browser automation via Playwright.
 | `server.js` | Express app setup, CORS, JSON body parsing, `/fill` and `/stop` routes, inactivity auto-shutdown, startup orchestration |
 | `gemini.js` | Gemini API wrapper: `askGemini()` for JSON responses, `generateCoverLetterText()` for cover letters |
 | `dom-extractor.js` | `extractDOM()` — injected into browser pages via `page.evaluate()`, traverses DOM including Shadow DOM, returns structured field descriptors |
-| `form-filler.js` | Core agent loop (15 steps max): extracts DOM → builds prompt → calls Gemini → executes actions. Handles retries, error recovery, cancellation, stuck detection |
+| `form-filler.js` | Core agent loop (10 steps max) implementing **Hybrid Routing**: extracts DOM → delegates binary/choice fields to Jev (TypeSafe) → filters handled fields to save tokens → delegates remaining complex fields to Gemini → executes merged actions. |
 | `file-handlers.js` | PDF resume upload, "Autofill from resume" detection, cover letter text area detection, cover letter PDF generation (pdfkit) |
 | `browser.js` | Chrome launch (platform-aware), CDP connection via Playwright |
 | `logger.js` | Simple `logToFile()` utility — appends timestamped messages to `agent.log` |
@@ -114,12 +114,13 @@ A local Express server that drives browser automation via Playwright.
    a. Tries "Autofill from resume" (Ashby feature)
    b. Uploads PDF to resume file input
    c. Handles cover letter (textarea or PDF upload)
-6. form-filler.js runs 15-step loop:
+6. form-filler.js runs 10-step loop:
    a. dom-extractor.js extracts current DOM state
-   b. Builds prompt with CV + DOM state + error context
-   c. gemini.js calls Gemini API → returns JSON actions
-   d. Executes actions (fill, click, selectOption, etc.)
-   e. Repeats until done or max steps reached
+   b. ROUTING: Passes simple choice/binary fields to Jev System One for instant decisions
+   c. TOKEN OPTIMIZATION: Removes Jev-handled fields from domState to save tokens
+   d. ROUTING: Builds prompt with remaining domState and calls Gemini API
+   e. Merges actions from Jev and Gemini and executes them (fill, click, selectOption, etc.)
+   f. Repeats until done or max steps reached
 7. server.js returns JSON response to extension
 ```
 

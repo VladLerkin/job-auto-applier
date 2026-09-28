@@ -1,5 +1,16 @@
 # Release Notes
 
+## v1.3.13
+**Release Date:** September 29, 2026
+
+### Features & Architecture
+- **Hybrid Routing Architecture (TypeSafe AI + Gemini):** Introduced a dual-engine system. Simple choices (checkboxes, radio buttons, standard dropdowns) are now routed to **Jev System One** via the `@typesafe-ai/sdk` for instant (200ms) execution. Complex text fields and search comboboxes are still handled by Gemini.
+- **Token Optimization:** The form filler now automatically deletes any fields successfully processed by Jev from the DOM state before sending the prompt to Gemini. This drastically reduces the prompt size and saves input tokens on mixed-field pages.
+
+### Bug Fixes & Improvements
+- **Improved Field Context Extraction:** Fixed an issue on platforms like Lever where radio button context was incomplete. The extractor now grabs up to 250 characters of surrounding text (from parent `li` or `.application-question` containers) to ensure the AI understands exactly what question it is answering.
+- **Dropdown Extraction Fix:** Corrected a bug where native `<select>` options weren't being correctly parsed into arrays of strings for the Jev SDK.
+- **Architecture Docs:** Updated `docs/DESIGN.md` to document the new Data Flow, components, and Hybrid Routing logic.
 ## v1.3.12
 **Release Date:** September 28, 2026
 

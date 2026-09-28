@@ -195,13 +195,17 @@ const extractDOM = (frameId) => {
                 }
             }
             if (!contextText) {
+                let questionContainer = el.closest('li, .application-question, .job-question, .form-field, .custom-question, .question, [class*="question"]');
+                if (questionContainer) {
+                    contextText = (questionContainer.innerText || questionContainer.textContent || '').replace(/\n/g, ' ').trim().substring(0, 250);
+                }
+            }
+            if (!contextText) {
                 let p = el.parentElement;
                 if (p && p.parentElement) p = p.parentElement;
                 if (p && p.parentElement) p = p.parentElement;
-                if (p && p.parentElement) p = p.parentElement;
                 if (p) {
-                    let lines = (p.innerText || '').replace(/SVGs not supported by this browser\./g, '').split('\n').map(l => l.trim()).filter(l => l);
-                    if (lines.length > 0) contextText = lines[0].substring(0, 150);
+                    contextText = (p.innerText || '').replace(/SVGs not supported by this browser\./g, '').replace(/\n/g, ' ').trim().substring(0, 250);
                 }
             }
         }

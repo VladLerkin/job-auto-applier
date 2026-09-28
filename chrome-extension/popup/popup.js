@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const localSettings = document.getElementById('local-settings');
   const localModelUrlInput = document.getElementById('local-model-url');
   const localModelFilenameInput = document.getElementById('local-model-filename');
+  const typesafeApiKeyInput = document.getElementById('typesafe-api-key');
 
   const apiKeyInput = document.getElementById('api-key');
   const modelNameInput = document.getElementById('model-name');
@@ -41,13 +42,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Load saved settings on startup ─────────────────────────────────────────────
   async function loadSettings() {
-    const { apiKey, modelName, cv, profile, cvPdfName, aiProvider, localModelUrl, localModelFilename } = await chrome.storage.local.get(['apiKey', 'modelName', 'cv', 'profile', 'cvPdfName', 'aiProvider', 'localModelUrl', 'localModelFilename']);
+    const { apiKey, modelName, cv, profile, cvPdfName, aiProvider, localModelUrl, localModelFilename, typesafeApiKey } = await chrome.storage.local.get(['apiKey', 'modelName', 'cv', 'profile', 'cvPdfName', 'aiProvider', 'localModelUrl', 'localModelFilename', 'typesafeApiKey']);
     if (aiProvider) {
       aiProviderSelect.value = aiProvider;
       aiProviderSelect.dispatchEvent(new Event('change'));
     }
     if (localModelUrl) localModelUrlInput.value = localModelUrl;
     if (localModelFilename) localModelFilenameInput.value = localModelFilename;
+    if (typesafeApiKey) typesafeApiKeyInput.value = typesafeApiKey;
     if (apiKey) apiKeyInput.value = apiKey;
     if (modelName) modelNameInput.value = modelName;
     if (profile) profileInput.value = profile;
@@ -118,12 +120,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const aiProvider = aiProviderSelect.value;
     const localModelUrl = localModelUrlInput.value.trim();
     const localModelFilename = localModelFilenameInput.value.trim();
+    const typesafeApiKey = typesafeApiKeyInput.value.trim();
     const apiKey = apiKeyInput.value.trim();
     const modelName = modelNameInput.value.trim() || 'gemini-3.8-flash';
     const profile = profileInput.value.trim();
     const cv = cvInput.value.trim();
 
-    chrome.storage.local.set({ apiKey, modelName, profile, cv, aiProvider, localModelUrl, localModelFilename }, () => {
+    chrome.storage.local.set({ apiKey, modelName, profile, cv, aiProvider, localModelUrl, localModelFilename, typesafeApiKey }, () => {
       const status = document.getElementById('save-status');
       status.classList.remove('hidden');
       setTimeout(() => {
@@ -502,7 +505,7 @@ ${rawText}`;
     errorMsg.classList.add('hidden');
     
     // Check if API key and CV exist
-    const { apiKey, modelName, cv, profile, cvPdfBase64, cvPdfName, aiProvider, localModelFilename } = await chrome.storage.local.get(['apiKey', 'modelName', 'cv', 'profile', 'cvPdfBase64', 'cvPdfName', 'aiProvider', 'localModelFilename']);
+    const { apiKey, modelName, cv, profile, cvPdfBase64, cvPdfName, aiProvider, localModelFilename, typesafeApiKey } = await chrome.storage.local.get(['apiKey', 'modelName', 'cv', 'profile', 'cvPdfBase64', 'cvPdfName', 'aiProvider', 'localModelFilename', 'typesafeApiKey']);
     if (!cv) {
       errorMsg.textContent = "Please paste your CV text in the Settings tab.";
       errorMsg.classList.remove('hidden');
@@ -540,6 +543,7 @@ ${rawText}`;
         body: JSON.stringify({
           cvText: cv,
           apiKey,
+          typesafeApiKey,
           modelName: currentModel,
           profileText: profile,
           tabUrl: tabUrl,

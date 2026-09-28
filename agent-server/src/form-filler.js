@@ -4,6 +4,7 @@ const { logToFile } = require('./logger');
 const { askGemini } = require('./gemini');
 const { askLocalLLM } = require('./local-llm');
 const { extractDOM } = require('./dom-extractor');
+const { TypeSafeClient, choice, noul } = require('@typesafe-ai/sdk');
 
 /**
  * Execute a single action on the page (fill, click, clickText, selectOption, selectNative).
@@ -337,13 +338,23 @@ OR when finished:
  * @param {Object} options - { cvText, apiKey, modelName, profileText, isCancelledFn, provider, localModelPath }
  * @returns {Object} { success, allActions, message }
  */
-async function fillForm(page, { cvText, apiKey, modelName, profileText, isCancelledFn, provider = 'gemini', localModelPath = null, maxSteps = 10, onProgress }) {
+async function fillForm(page, { cvText, apiKey, typesafeApiKey, modelName, profileText, isCancelledFn, provider = 'gemini', localModelPath = null, maxSteps = 10, onProgress }) {
     let allActions = [];
     let completedEntries = [];
     let previousErrors = [];
     let consecutiveEmptySteps = 0;
     let repeatedActionsCount = 0;
     let lastActionsStr = "";
+    
+    let tsClient = null;
+    if (typesafeApiKey) {
+        try {
+            tsClient = new TypeSafeClient({ apiKey: typesafeApiKey });
+            console.log("✅ TypeSafe AI (Jev System One) initialized as a Guardrail engine.");
+        } catch (e) {
+            console.error("Failed to initialize TypeSafe:", e.message);
+        }
+    }
     
     for (let step = 0; step < maxSteps; step++) {
         if (onProgress) onProgress(step + 1, maxSteps);
@@ -396,22 +407,123 @@ async function fillForm(page, { cvText, apiKey, modelName, profileText, isCancel
                 ? `Completed entries so far: ${completedEntries.join(', ')}` 
                 : 'No entries completed yet.';
             
-            const prompt = buildPrompt(step, maxSteps, cvText, profileText, domState, errorPrompt, actionSummary);
+            const binaryFields = domState.filter(el => 
+                (el.tag === 'input' && (el.type === 'radio' || el.type === 'checkbox')) ||
+                (el.tag === 'select' && el.options && el.options.length > 0)
+            );
+            const textFields = domState.filter(el => 
+                (el.tag === 'input' && ['text', 'email', 'tel', 'password', 'number'].includes(el.type)) || 
+                el.tag === 'textarea' || el.role === 'combobox' || 
+                el.tag === 'button' // buttons like 'save', 'next'
+            );
             
-            let result;
-            if (provider === 'local') {
-                result = await askLocalLLM(prompt, localModelPath);
+            let result = { actions: [], done: false };
+            let jevActions = [];
+            
+            // ── 1. ROUTING: JEV SYSTEM ONE FOR BINARY & CHOICE FIELDS ──
+            if (tsClient && binaryFields.length > 0) {
+                console.log(`⚡ Jev Routing: Processing ${binaryFields.length} choice fields...`);
+                try {
+                    const state = `User CV: ${cvText}\nPreferences: ${profileText || 'None'}`;
+                    const questions = {};
+                    binaryFields.forEach(el => {
+                        if (el.context && !el.checked && !el.value) { // Ensure it's not already filled
+                            const key = `action_${el.id.replace(/-/g, '_')}`;
+                            if (el.tag === 'select') {
+                                // options are already an array of strings from dom-extractor
+                                const optionTexts = el.options.map(o => typeof o === 'string' ? o.trim() : o.text?.trim()).filter(Boolean).slice(0, 20);
+                                optionTexts.push("Skip");
+                                questions[key] = choice(`Which option accurately describes the user for the field: "${el.context}"?`, optionTexts);
+                            } else {
+                                questions[key] = noul(`Is it factually correct to select this checkbox/radio button for this user based on their CV? Field label: "${el.context}"`);
+                            }
+                        }
+                    });
+                    
+                    if (Object.keys(questions).length > 0) {
+                        const tsResponse = await tsClient.systemOne({ state, questions });
+                        for (const el of binaryFields) {
+                            const key = `action_${el.id.replace(/-/g, '_')}`;
+                            const res = tsResponse.answers[key];
+                            if (res) {
+                                if (el.tag === 'select') {
+                                    if (res.choice && res.choice !== "Skip" && res.confidence > 0.4) {
+                                        jevActions.push({ action: 'selectNative', id: el.id, value: res.choice });
+                                        console.log(`✅ Jev chose dropdown: "${res.choice}" for "${el.context.substring(0, 40)}..."`);
+                                    }
+                                } else {
+                                    if (res.noul > 0.6) {
+                                        jevActions.push({ action: 'click', id: el.id, value: el.context });
+                                        console.log(`✅ Jev clicked checkbox/radio: "${el.context.substring(0, 40)}..."`);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    console.log(`⚡ Jev generated ${jevActions.length} actions.`);
+                } catch(e) {
+                    console.error("⚠️ Jev routing failed:", e.message);
+                }
+            }
+
+            // ── 2. ROUTING: GEMINI FOR COMPLEX FIELDS ──
+            const actionableTextFields = textFields.filter(el => !el.value && !el.checked);
+            
+            if (tsClient && actionableTextFields.length === 0 && binaryFields.length > 0 && jevActions.length > 0) {
+                console.log("⚡ Skipping Gemini! Jev System One handled the entire page (Routing).");
+                result.actions = jevActions;
             } else {
-                result = await askGemini(prompt, apiKey, modelName);
+                console.log(`🧠 Calling Gemini for complex fields and page analysis...`);
+                
+                // ── OPTIMIZATION: Remove fields already handled by Jev to save Gemini tokens ──
+                let optimizedDomState = domState;
+                if (jevActions.length > 0) {
+                    const jevHandledIds = new Set(jevActions.map(a => a.id));
+                    optimizedDomState = domState.filter(el => !jevHandledIds.has(el.id));
+                    console.log(`📉 Token Optimization: Removed ${jevActions.length} Jev-handled fields from Gemini prompt.`);
+                }
+                
+                const prompt = buildPrompt(step, maxSteps, cvText, profileText, optimizedDomState, errorPrompt, actionSummary);
+                
+                let geminiResult;
+                if (provider === 'local') {
+                    geminiResult = await askLocalLLM(prompt, localModelPath);
+                } else {
+                    geminiResult = await askGemini(prompt, apiKey, modelName);
+                }
+                
+                if (isCancelledFn()) {
+                    logToFile('🛑 Agent loop cancelled by user (during LLM wait).');
+                    return { success: false, error: 'Stopped by user' };
+                }
+                
+                fs.writeFileSync(path.join(__dirname, '..', 'debug_gemini.json'), JSON.stringify(geminiResult, null, 2));
+                
+                if (geminiResult && geminiResult.actions) {
+                    // Filter out Gemini's actions if Jev handled them
+                    let finalGeminiActions = geminiResult.actions;
+                    if (tsClient) {
+                        finalGeminiActions = geminiResult.actions.filter(a => {
+                            const targetEl = domState.find(e => e.id === a.id);
+                            if (targetEl) {
+                                if (a.action === 'click' && targetEl.tag === 'input' && (targetEl.type === 'radio' || targetEl.type === 'checkbox')) {
+                                    return false; // Handled strictly by Jev
+                                }
+                                if ((a.action === 'selectNative' || a.action === 'selectOption') && targetEl.tag === 'select') {
+                                    return false; // Handled by Jev choice
+                                }
+                            }
+                            return true;
+                        });
+                    }
+                    result.actions = [...jevActions, ...finalGeminiActions];
+                }
+                if (geminiResult && geminiResult.done) {
+                    result.done = true;
+                }
             }
             
-            if (isCancelledFn()) {
-                logToFile('🛑 Agent loop cancelled by user (during LLM wait).');
-                return { success: false, error: 'Stopped by user' };
-            }
-            
-            fs.writeFileSync(path.join(__dirname, '..', 'debug_gemini.json'), JSON.stringify(result, null, 2));
-            console.log("Gemini Actions:", result.actions);
+            console.log("Final Merged Actions:", result.actions);
             
             const currentActionsStr = JSON.stringify(result.actions);
             if (currentActionsStr === lastActionsStr && result.actions && result.actions.length > 0) {
@@ -448,6 +560,8 @@ async function fillForm(page, { cvText, apiKey, modelName, profileText, isCancel
                     logToFile('🛑 Agent loop cancelled by user (during action execution).');
                     return { success: false, error: 'Stopped by user' };
                 }
+
+
                 try {
                     await executeAction(page, action);
                 } catch (e) {

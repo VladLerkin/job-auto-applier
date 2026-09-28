@@ -70,7 +70,7 @@ app.post('/fill', async (req, res) => {
     currentStep = 0;
     resetInactivityTimer();
     
-    let { cvText, apiKey, modelName, profileText, tabUrl, cvPdfBase64, cvPdfName, provider, localModelPath } = req.body;
+    let { cvText, apiKey, typesafeApiKey, modelName, profileText, tabUrl, cvPdfBase64, cvPdfName, provider, localModelPath } = req.body;
     
     if (provider === 'gemini' && (!cvText || !apiKey)) {
         return res.status(400).json({ error: 'Missing cvText or apiKey' });
@@ -140,6 +140,7 @@ app.post('/fill', async (req, res) => {
         const result = await fillForm(page, {
             cvText,
             apiKey,
+            typesafeApiKey,
             modelName,
             profileText,
             provider: provider || 'gemini',
