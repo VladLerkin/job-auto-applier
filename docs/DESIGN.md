@@ -52,6 +52,7 @@ job-auto-applier/
 │   ├── src/                           # Application source code
 │   │   ├── server.js                  # Express app, routes (/fill, /stop), startup
 │   │   ├── gemini.js                  # Gemini API integration (askGemini, generateCoverLetterText)
+│   │   ├── jev.js                     # TypeSafe AI / Jev System One integration (initJev, askJev)
 │   │   ├── dom-extractor.js           # Browser-injectable DOM extraction function
 │   │   ├── form-filler.js             # 15-step agent loop, action execution, LLM prompt builder
 │   │   ├── file-handlers.js           # PDF upload, cover letter handling (text + PDF gen)
@@ -61,6 +62,7 @@ job-auto-applier/
 │       ├── test-chrome.js
 │       ├── test-extract.js
 │       ├── test-gemini.js
+│       ├── test-jev.js
 │       ├── test-jazzhr.js
 │       └── test-jazzhr-submit.js
 │
@@ -94,6 +96,7 @@ A local Express server that drives browser automation via Playwright.
 |--------|---------------|
 | `server.js` | Express app setup, CORS, JSON body parsing, `/fill` and `/stop` routes, inactivity auto-shutdown, startup orchestration |
 | `gemini.js` | Gemini API wrapper: `askGemini()` for JSON responses, `generateCoverLetterText()` for cover letters |
+| `jev.js` | TypeSafe AI SDK wrapper: `askJev()` for routing and processing binary/choice fields via System One |
 | `dom-extractor.js` | `extractDOM()` — injected into browser pages via `page.evaluate()`, traverses DOM including Shadow DOM, returns structured field descriptors |
 | `form-filler.js` | Core agent loop (10 steps max) implementing **Hybrid Routing**: extracts DOM → delegates binary/choice fields to Jev (TypeSafe) → filters handled fields to save tokens → delegates remaining complex fields to Gemini → executes merged actions. |
 | `file-handlers.js` | PDF resume upload, "Autofill from resume" detection, cover letter text area detection, cover letter PDF generation (pdfkit) |

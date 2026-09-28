@@ -4,7 +4,7 @@ const { logToFile } = require('./logger');
 const { askGemini } = require('./gemini');
 const { askLocalLLM } = require('./local-llm');
 const { extractDOM } = require('./dom-extractor');
-const { TypeSafeClient, choice, noul } = require('@typesafe-ai/sdk');
+const { initJev, askJev } = require('./jev');
 
 /**
  * Execute a single action on the page (fill, click, clickText, selectOption, selectNative).
@@ -348,12 +348,7 @@ async function fillForm(page, { cvText, apiKey, typesafeApiKey, modelName, profi
     
     let tsClient = null;
     if (typesafeApiKey) {
-        try {
-            tsClient = new TypeSafeClient({ apiKey: typesafeApiKey });
-            console.log("✅ TypeSafe AI (Jev System One) initialized as a Guardrail engine.");
-        } catch (e) {
-            console.error("Failed to initialize TypeSafe:", e.message);
-        }
+        tsClient = initJev(typesafeApiKey);
     }
     
     for (let step = 0; step < maxSteps; step++) {
@@ -422,47 +417,17 @@ async function fillForm(page, { cvText, apiKey, typesafeApiKey, modelName, profi
             
             // ── 1. ROUTING: JEV SYSTEM ONE FOR BINARY & CHOICE FIELDS ──
             if (tsClient && binaryFields.length > 0) {
-                console.log(`⚡ Jev Routing: Processing ${binaryFields.length} choice fields...`);
-                try {
-                    const state = `User CV: ${cvText}\nPreferences: ${profileText || 'None'}`;
-                    const questions = {};
-                    binaryFields.forEach(el => {
-                        if (el.context && !el.checked && !el.value) { // Ensure it's not already filled
-                            const key = `action_${el.id.replace(/-/g, '_')}`;
-                            if (el.tag === 'select') {
-                                // options are already an array of strings from dom-extractor
-                                const optionTexts = el.options.map(o => typeof o === 'string' ? o.trim() : o.text?.trim()).filter(Boolean).slice(0, 20);
-                                optionTexts.push("Skip");
-                                questions[key] = choice(`Which option accurately describes the user for the field: "${el.context}"?`, optionTexts);
-                            } else {
-                                questions[key] = noul(`Is it factually correct to select this checkbox/radio button for this user based on their CV? Field label: "${el.context}"`);
-                            }
-                        }
-                    });
-                    
-                    if (Object.keys(questions).length > 0) {
-                        const tsResponse = await tsClient.systemOne({ state, questions });
-                        for (const el of binaryFields) {
-                            const key = `action_${el.id.replace(/-/g, '_')}`;
-                            const res = tsResponse.answers[key];
-                            if (res) {
-                                if (el.tag === 'select') {
-                                    if (res.choice && res.choice !== "Skip" && res.confidence > 0.4) {
-                                        jevActions.push({ action: 'selectNative', id: el.id, value: res.choice });
-                                        console.log(`✅ Jev chose dropdown: "${res.choice}" for "${el.context.substring(0, 40)}..."`);
-                                    }
-                                } else {
-                                    if (res.noul > 0.6) {
-                                        jevActions.push({ action: 'click', id: el.id, value: el.context });
-                                        console.log(`✅ Jev clicked checkbox/radio: "${el.context.substring(0, 40)}..."`);
-                                    }
-                                }
-                            }
+                jevActions = await askJev(tsClient, cvText, profileText, binaryFields);
+                if (jevActions.length > 0) {
+                    console.log("⚡ Executing Jev actions instantly for immediate visual feedback...");
+                    for (const action of jevActions) {
+                        try {
+                            await executeAction(page, action);
+                            allActions.push(action);
+                        } catch (e) {
+                            console.error(`⚠️ Jev immediate execution failed: ${e.message}`);
                         }
                     }
-                    console.log(`⚡ Jev generated ${jevActions.length} actions.`);
-                } catch(e) {
-                    console.error("⚠️ Jev routing failed:", e.message);
                 }
             }
 
@@ -471,7 +436,8 @@ async function fillForm(page, { cvText, apiKey, typesafeApiKey, modelName, profi
             
             if (tsClient && actionableTextFields.length === 0 && binaryFields.length > 0 && jevActions.length > 0) {
                 console.log("⚡ Skipping Gemini! Jev System One handled the entire page (Routing).");
-                result.actions = jevActions;
+                // jevActions are already executed above, so we pass empty array to proceed to next step
+                result.actions = []; 
             } else {
                 console.log(`🧠 Calling Gemini for complex fields and page analysis...`);
                 
@@ -516,7 +482,7 @@ async function fillForm(page, { cvText, apiKey, typesafeApiKey, modelName, profi
                             return true;
                         });
                     }
-                    result.actions = [...jevActions, ...finalGeminiActions];
+                    result.actions = finalGeminiActions;
                 }
                 if (geminiResult && geminiResult.done) {
                     result.done = true;

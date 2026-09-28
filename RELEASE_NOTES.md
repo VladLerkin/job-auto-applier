@@ -1,5 +1,11 @@
 # Release Notes
 
+## v1.3.14
+**Release Date:** September 29, 2026
+
+### Features & Architecture
+- **Instant Visual Feedback (Jev):** Modified the form filler execution loop to execute Jev System One actions (checkboxes, dropdowns, radios) immediately upon receiving them (in ~200ms), rather than waiting 5-10 seconds for Gemini to finish generating its response for complex fields. This makes the UI feel incredibly responsive.
+- **Code Refactoring:** Extracted all TypeSafe SDK initialization and routing logic out of `form-filler.js` into a dedicated `jev.js` module. Added corresponding unit tests in `test-jev.js` to ensure the integration remains stable.
 ## v1.3.13
 **Release Date:** September 29, 2026
 
