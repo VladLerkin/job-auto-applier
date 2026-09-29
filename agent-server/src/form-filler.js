@@ -34,12 +34,12 @@ async function executeAction(page, action) {
                 await targetLocator.fill(action.value, { timeout: 1000 });
             } else {
                 await targetLocator.fill('', { timeout: 1000 }); // Clear first
-                await targetLocator.pressSequentially(action.value, { delay: 15, timeout: 5000 });
+                await targetLocator.pressSequentially(action.value, { delay: 1, timeout: 5000 });
             }
         } catch (e) {
             throw new Error(`Could not fill element ${action.id}: ${e.message}`);
         }
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(200);
 
     } else if (action.action === 'click') {
         try {
@@ -47,7 +47,7 @@ async function executeAction(page, action) {
         } catch (e) {
             throw new Error(`Could not click element ${action.id}: ${e.message}`);
         }
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(200);
 
     } else if (action.action === 'clickText') {
         const isExact = action.exact === true;
@@ -94,7 +94,7 @@ async function executeAction(page, action) {
         if (!clicked) {
             throw new Error(`No clickable element found with text: ${action.value}`);
         }
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(200);
 
     } else if (action.action === 'selectNative') {
         let selected = false;
@@ -114,7 +114,7 @@ async function executeAction(page, action) {
             try { await targetLocator.selectOption(optionValue, { timeout: 2000 }); selected = true; } catch(e) {}
         }
         if (!selected) await targetLocator.selectOption({ label: action.value }, { timeout: 2000 });
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(200);
 
     } else if (action.action === 'selectOption') {
         // Handle combobox/autocomplete fields (Country/Region, City with search)
@@ -137,21 +137,21 @@ async function executeAction(page, action) {
                 try { await targetLocator.selectOption(optionValue, { timeout: 2000 }); selected = true; } catch(e) {}
             }
             if (!selected) await targetLocator.selectOption({ label: action.select }, { timeout: 2000 });
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(200);
         } else {
             // 1. Click on the element to focus/open it
             await targetLocator.click({ timeout: 2000 });
-            await page.waitForTimeout(300);
+            await page.waitForTimeout(100);
             
             // 2. Clear existing value and type search text (only if it's an input)
             const isInput = tagName === 'INPUT' || tagName === 'TEXTAREA';
             if (isInput && action.search) {
                 await targetLocator.fill('', { timeout: 1000 });
-                await targetLocator.pressSequentially(action.search, { delay: 50, timeout: 5000 });
+                await targetLocator.pressSequentially(action.search, { delay: 1, timeout: 5000 });
             }
             
             // 3. Wait for dropdown options to appear
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
             
             // 4. Try to click the matching option using multiple strategies
             let optionClicked = false;
@@ -237,7 +237,7 @@ async function executeAction(page, action) {
             if (!optionClicked) {
                 throw new Error(`selectOption: Could not find and click option "${action.select}" after typing "${action.search}"`);
             }
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(200);
         }
     }
 }
@@ -415,77 +415,85 @@ async function fillForm(page, { cvText, apiKey, typesafeApiKey, modelName, profi
             let result = { actions: [], done: false };
             let jevActions = [];
             
-            // ── 1. ROUTING: JEV SYSTEM ONE FOR BINARY & CHOICE FIELDS ──
+            // ── ROUTING: RUN JEV AND GEMINI CONCURRENTLY ──
+            let jevPromise = null;
+            let geminiPromise = null;
+
             if (tsClient && binaryFields.length > 0) {
-                jevActions = await askJev(tsClient, cvText, profileText, binaryFields);
-                if (jevActions.length > 0) {
-                    console.log("⚡ Executing Jev actions instantly for immediate visual feedback...");
-                    for (const action of jevActions) {
-                        try {
-                            await executeAction(page, action);
-                            allActions.push(action);
-                        } catch (e) {
-                            console.error(`⚠️ Jev immediate execution failed: ${e.message}`);
+                jevPromise = askJev(tsClient, cvText, profileText, binaryFields);
+            }
+
+            const actionableTextFields = textFields.filter(el => !el.value && !el.checked);
+            
+            // Launch Gemini concurrently (we don't optimize out Jev fields from the prompt, 
+            // but we filter them out from the results later).
+            const prompt = buildPrompt(step, maxSteps, cvText, profileText, domState, errorPrompt, actionSummary);
+            if (!(tsClient && actionableTextFields.length === 0 && binaryFields.length > 0)) {
+                console.log(`🧠 Calling Gemini for complex fields and page analysis...`);
+                if (provider === 'local') {
+                    geminiPromise = askLocalLLM(prompt, localModelPath);
+                } else {
+                    geminiPromise = askGemini(prompt, apiKey, modelName);
+                }
+            } else {
+                console.log("⚡ Skipping Gemini! Jev System One handles the entire page.");
+            }
+
+            // Wait for Jev to finish and execute its actions instantly
+            if (jevPromise) {
+                try {
+                    jevActions = await jevPromise;
+                    if (jevActions && jevActions.length > 0) {
+                        console.log("⚡ Executing Jev actions instantly for immediate visual feedback...");
+                        for (const action of jevActions) {
+                            try {
+                                await executeAction(page, action);
+                                allActions.push(action);
+                            } catch (e) {
+                                console.error(`⚠️ Jev immediate execution failed: ${e.message}`);
+                            }
                         }
                     }
+                } catch (e) {
+                    console.error("⚠️ jevPromise error:", e.message);
                 }
             }
 
-            // ── 2. ROUTING: GEMINI FOR COMPLEX FIELDS ──
-            const actionableTextFields = textFields.filter(el => !el.value && !el.checked);
-            
-            if (tsClient && actionableTextFields.length === 0 && binaryFields.length > 0 && jevActions.length > 0) {
-                console.log("⚡ Skipping Gemini! Jev System One handled the entire page (Routing).");
-                // jevActions are already executed above, so we pass empty array to proceed to next step
-                result.actions = []; 
-            } else {
-                console.log(`🧠 Calling Gemini for complex fields and page analysis...`);
-                
-                // ── OPTIMIZATION: Remove fields already handled by Jev to save Gemini tokens ──
-                let optimizedDomState = domState;
-                if (jevActions.length > 0) {
-                    const jevHandledIds = new Set(jevActions.map(a => a.id));
-                    optimizedDomState = domState.filter(el => !jevHandledIds.has(el.id));
-                    console.log(`📉 Token Optimization: Removed ${jevActions.length} Jev-handled fields from Gemini prompt.`);
-                }
-                
-                const prompt = buildPrompt(step, maxSteps, cvText, profileText, optimizedDomState, errorPrompt, actionSummary);
-                
-                let geminiResult;
-                if (provider === 'local') {
-                    geminiResult = await askLocalLLM(prompt, localModelPath);
-                } else {
-                    geminiResult = await askGemini(prompt, apiKey, modelName);
-                }
-                
-                if (isCancelledFn()) {
-                    logToFile('🛑 Agent loop cancelled by user (during LLM wait).');
-                    return { success: false, error: 'Stopped by user' };
-                }
-                
-                fs.writeFileSync(path.join(__dirname, '..', 'debug_gemini.json'), JSON.stringify(geminiResult, null, 2));
-                
-                if (geminiResult && geminiResult.actions) {
-                    // Filter out Gemini's actions if Jev handled them
-                    let finalGeminiActions = geminiResult.actions;
-                    if (tsClient) {
-                        finalGeminiActions = geminiResult.actions.filter(a => {
-                            const targetEl = domState.find(e => e.id === a.id);
-                            if (targetEl) {
-                                if (a.action === 'click' && targetEl.tag === 'input' && (targetEl.type === 'radio' || targetEl.type === 'checkbox')) {
-                                    return false; // Handled strictly by Jev
+            if (isCancelledFn()) {
+                logToFile('🛑 Agent loop cancelled by user (during LLM wait).');
+                return { success: false, error: 'Stopped by user' };
+            }
+
+            // Wait for Gemini to finish
+            if (geminiPromise) {
+                try {
+                    let geminiResult = await geminiPromise;
+                    fs.writeFileSync(path.join(__dirname, '..', 'debug_gemini.json'), JSON.stringify(geminiResult, null, 2));
+                    
+                    if (geminiResult && geminiResult.actions) {
+                        // Filter out Gemini's actions if Jev handled them
+                        let finalGeminiActions = geminiResult.actions;
+                        if (tsClient) {
+                            finalGeminiActions = geminiResult.actions.filter(a => {
+                                const targetEl = domState.find(e => e.id === a.id);
+                                if (targetEl) {
+                                    if (a.action === 'click' && targetEl.tag === 'input' && (targetEl.type === 'radio' || targetEl.type === 'checkbox')) {
+                                        return false; // Handled strictly by Jev
+                                    }
+                                    if ((a.action === 'selectNative' || a.action === 'selectOption') && targetEl.tag === 'select') {
+                                        return false; // Handled by Jev choice
+                                    }
                                 }
-                                if ((a.action === 'selectNative' || a.action === 'selectOption') && targetEl.tag === 'select') {
-                                    return false; // Handled by Jev choice
-                                }
-                            }
-                            return true;
-                        });
+                                return true;
+                            });
+                        }
+                        result.actions = finalGeminiActions;
                     }
-                    result.actions = finalGeminiActions;
-                }
-                if (geminiResult && geminiResult.done) {
-                    result.done = true;
+                    if (geminiResult && geminiResult.done) {
+                        result.done = true;
+                    }
+                } catch (e) {
+                    throw e; // Let the outer catch handle Gemini failure
                 }
             }
             
