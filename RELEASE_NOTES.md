@@ -1,5 +1,17 @@
 # Release Notes
 
+## v1.3.16
+**Release Date:** September 29, 2026
+
+### Features & Architecture
+- **Concurrent Form Filling:** The agent now processes form fields significantly faster by executing Jev (TypeSafe AI) and Gemini requests in parallel instead of sequentially.
+- **Lightning-Fast Execution:** Eliminated artificial typing and click delays from the form filler, resulting in near-instantaneous interaction with the page.
+
+### Bug Fixes & Improvements
+- **Radio Button Accuracy (Jev):** Fixed an issue where Jev System One couldn't differentiate between Yes/No options for radio buttons. The prompt now explicitly includes the option label alongside the field context.
+- **Hidden Select Elements (Select2):** Fixed an issue where the agent would timeout trying to interact with custom dropdown components (e.g., BambooHR's Select2) by implementing `force: true` for native select options, successfully syncing the hidden state with the custom UI.
+- **Gemini Fallback Filter:** Refined the Jev action filtering logic to strictly prevent Gemini from hallucinating and attempting to execute text actions (`selectOption`) on radio buttons and checkboxes that Jev should handle.
+
 ## v1.3.15
 **Release Date:** September 29, 2026
 
