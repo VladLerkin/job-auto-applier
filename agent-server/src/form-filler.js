@@ -28,8 +28,19 @@ async function executeAction(page, action) {
     }
 
     if (action.action === 'fill') {
+        const tagName = await targetLocator.evaluate(el => el.tagName).catch(() => '');
+        const inputType = await targetLocator.evaluate(el => el.type || '').catch(() => '');
+        
+        // If Gemini tried to fill a button, link, or div (custom comboboxes), convert it to selectOption
+        if (tagName !== 'INPUT' && tagName !== 'TEXTAREA') {
+            console.log(`[Warning] Gemini tried to 'fill' a ${tagName} (${action.id}). Converting to selectOption...`);
+            action.action = 'selectOption';
+            action.select = action.value;
+            // Recursively call executeAction to handle it as selectOption
+            return executeAction(page, action);
+        }
+        
         try {
-            const inputType = await targetLocator.evaluate(el => el.type).catch(() => '');
             if (action.value.length > 50 || ['date', 'month', 'time'].includes(inputType)) {
                 await targetLocator.fill(action.value, { timeout: 1000 });
             } else {
@@ -145,12 +156,12 @@ async function executeAction(page, action) {
                     if (opt.text.trim().toLowerCase().includes(lowerMatch)) return opt.value;
                 }
                 return null;
-            }, action.select).catch(() => null);
+            }, action.select || action.value).catch(() => null);
 
             if (optionValue !== null) {
                 try { await targetLocator.selectOption(optionValue, { force: true, timeout: 2000 }); selected = true; } catch(e) {}
             }
-            if (!selected) await targetLocator.selectOption({ label: action.select }, { force: true, timeout: 2000 });
+            if (!selected) await targetLocator.selectOption({ label: action.select || action.value }, { force: true, timeout: 2000 });
             await page.waitForTimeout(200);
         } else {
             // 1. Click on the element to focus/open it
@@ -159,9 +170,14 @@ async function executeAction(page, action) {
             
             // 2. Clear existing value and type search text (only if it's an input)
             const isInput = tagName === 'INPUT' || tagName === 'TEXTAREA';
-            if (isInput && action.search) {
-                await targetLocator.fill('', { timeout: 1000 });
-                await targetLocator.pressSequentially(action.search, { delay: 1, timeout: 5000 });
+            const inputType = isInput ? await targetLocator.evaluate(el => el.type || '').catch(() => '') : '';
+            if (isInput && inputType !== 'button' && inputType !== 'submit' && action.search) {
+                try {
+                    await targetLocator.fill('', { timeout: 1000 });
+                    await targetLocator.pressSequentially(action.search, { delay: 1, timeout: 5000 });
+                } catch(e) {
+                    // Ignore typing errors on custom comboboxes
+                }
             }
             
             // 3. Wait for dropdown options to appear
@@ -169,12 +185,14 @@ async function executeAction(page, action) {
             
             // 4. Try to click the matching option using multiple strategies
             let optionClicked = false;
-            let matchText = action.select.toLowerCase();
-            let altMatchText = action.select.includes(',') ? action.select.split(',')[0].trim().toLowerCase() : null;
+            let selectText = action.select || action.value;
+            if (!selectText) throw new Error("No select or value provided for selectOption");
+            let matchText = selectText.toLowerCase();
+            let altMatchText = selectText.includes(',') ? selectText.split(',')[0].trim().toLowerCase() : null;
             
             // Strategy 1: Click by role="option"
             try {
-                const options = targetFrame.getByRole('option', { name: action.select });
+                const options = targetFrame.getByRole('option', { name: selectText });
                 const count = await options.count();
                 if (count > 0) {
                     await options.first().click({ timeout: 2000 });
@@ -249,7 +267,7 @@ async function executeAction(page, action) {
             }
             
             if (!optionClicked) {
-                throw new Error(`selectOption: Could not find and click option "${action.select}" after typing "${action.search}"`);
+                throw new Error(`selectOption: Could not find and click option "${selectText}" after typing "${action.search || ''}"`);
             }
             await page.waitForTimeout(200);
         }

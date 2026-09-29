@@ -1,5 +1,12 @@
 # Release Notes
 
+## v1.3.18
+**Release Date:** September 29, 2026
+
+### Bug Fixes & Improvements
+- **Workday Dropdown Support:** Fixed a critical bug where Gemini would hallucinate `fill` actions for custom Workday comboboxes (rendered as `<button>` or `<div>` elements), causing the agent to crash with an unhandled Playwright error (`Element is not an <input>`). These actions are now safely intercepted and converted to `selectOption` actions.
+- **Robust Dropdown Selection:** Hardened the `selectOption` logic to prevent crashes when attempting to type search queries into button-based lists. Additionally, fixed a TypeError that occurred when Gemini provided a `value` parameter but omitted the `select` parameter.
+
 ## v1.3.17
 **Release Date:** September 29, 2026
 
