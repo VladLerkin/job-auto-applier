@@ -12,7 +12,7 @@ const extractDOM = (frameId) => {
         // Clear old IDs inside this root (main document or shadow root)
         root.querySelectorAll('[data-arf-id]').forEach(el => el.removeAttribute('data-arf-id'));
         
-        const els = root.querySelectorAll('input, select, textarea, button, a, [role="button"], [role="combobox"], [role="listbox"], [role="option"], li, [tabindex="0"], spl-button, oc-button, [aria-label], .select-selected');
+        const els = root.querySelectorAll('input, select, textarea, button, a, [role="button"], [role="combobox"], [role="listbox"], [role="option"], [role="radio"], [role="checkbox"], li, [tabindex="0"], spl-button, oc-button, [aria-label], .select-selected');
         els.forEach(el => allElements.push(el));
         
         const allNodes = root.querySelectorAll('*');
@@ -27,12 +27,13 @@ const extractDOM = (frameId) => {
 
     // Only capture interactive or potentially clickable elements
     const elements = allElements.filter(el => {
+        const isRadioOrCheckbox = el.type === 'radio' || el.type === 'checkbox' || el.getAttribute('role') === 'radio' || el.getAttribute('role') === 'checkbox';
         const rect = el.getBoundingClientRect();
         // Basic visibility check
-        if (rect.width <= 0 || rect.height <= 0) return false;
+        if (!isRadioOrCheckbox && (rect.width <= 0 || rect.height <= 0)) return false;
         try {
             const style = window.getComputedStyle(el);
-            if (style.visibility === 'hidden' || style.display === 'none') return false;
+            if (!isRadioOrCheckbox && (style.visibility === 'hidden' || style.display === 'none')) return false;
         } catch(e) {}
         // Filter out LinkedIn navigation noise (skip links, nav items outside modal)
         const text = (el.innerText || el.textContent || '').trim();
@@ -195,17 +196,21 @@ const extractDOM = (frameId) => {
                 }
             }
             if (!contextText) {
-                let questionContainer = el.closest('li, .application-question, .job-question, .form-field, .custom-question, .question, [class*="question"]');
+                let questionContainer = el.closest('li, .application-question, .job-question, .form-field, .custom-question, .question, [class*="question"], [class*="form-element"], [class*="form-component"], [class*="form-group"], [class*="form-section"], .fb-dash-form-element');
                 if (questionContainer) {
                     contextText = (questionContainer.innerText || questionContainer.textContent || '').replace(/\n/g, ' ').trim().substring(0, 250);
                 }
             }
-            if (!contextText) {
+            if (!contextText || contextText === 'Yes' || contextText === 'No') {
                 let p = el.parentElement;
-                if (p && p.parentElement) p = p.parentElement;
-                if (p && p.parentElement) p = p.parentElement;
-                if (p) {
-                    contextText = (p.innerText || '').replace(/SVGs not supported by this browser\./g, '').replace(/\n/g, ' ').trim().substring(0, 250);
+                // Go up until we find a parent that has more text than just Yes/No
+                for (let i = 0; i < 8 && p; i++) {
+                    const txt = (p.innerText || '').replace(/SVGs not supported by this browser\./g, '').replace(/\n/g, ' ').trim();
+                    if (txt.length > 5 && txt !== 'Yes' && txt !== 'No' && txt !== 'Yes No' && txt !== 'No Yes') {
+                        contextText = txt.substring(0, 250);
+                        break;
+                    }
+                    p = p.parentElement;
                 }
             }
         }

@@ -45,7 +45,21 @@ async function executeAction(page, action) {
         try {
             await targetLocator.click({ force: true, timeout: 500 });
         } catch (e) {
-            throw new Error(`Could not click element ${action.id}: ${e.message}`);
+            console.log(`Playwright click failed for ${action.id}, trying native DOM click fallback...`);
+            try {
+                await targetLocator.evaluate(el => {
+                    el.click();
+                    if (el.labels && el.labels.length > 0) {
+                        el.labels[0].click();
+                    } else if (el.id) {
+                        const safeId = el.id.replace(/"/g, '\\"');
+                        const label = document.querySelector(`label[for="${safeId}"]`);
+                        if (label) label.click();
+                    }
+                });
+            } catch (e2) {
+                throw new Error(`Could not click element ${action.id}: ${e.message} and fallback failed: ${e2.message}`);
+            }
         }
         await page.waitForTimeout(200);
 
@@ -404,6 +418,7 @@ async function fillForm(page, { cvText, apiKey, typesafeApiKey, modelName, profi
             
             const binaryFields = domState.filter(el => 
                 (el.tag === 'input' && (el.type === 'radio' || el.type === 'checkbox')) ||
+                el.role === 'checkbox' || el.role === 'radio' ||
                 (el.tag === 'select' && el.options && el.options.length > 0)
             );
             const textFields = domState.filter(el => 
@@ -474,16 +489,22 @@ async function fillForm(page, { cvText, apiKey, typesafeApiKey, modelName, profi
                         // Filter out Gemini's actions if Jev handled them
                         let finalGeminiActions = geminiResult.actions;
                         if (tsClient) {
-                            finalGeminiActions = geminiResult.actions.filter(a => {
-                                const targetEl = domState.find(e => e.id === a.id);
-                                if (targetEl) {
-                                    if (targetEl.tag === 'input' && (targetEl.type === 'radio' || targetEl.type === 'checkbox')) {
-                                        return false; // Handled strictly by Jev
-                                    }
-                                    if (targetEl.tag === 'select') {
-                                        return false; // Handled strictly by Jev
-                                    }
+                            const jevHandledIds = new Set(jevActions.map(a => a.id));
+                            const jevHandledRadioNames = new Set();
+                            for (const a of jevActions) {
+                                const el = domState.find(e => e.id === a.id);
+                                if (el && (el.type === 'radio' || el.role === 'radio') && el.name) {
+                                    jevHandledRadioNames.add(el.name);
                                 }
+                            }
+
+                            finalGeminiActions = geminiResult.actions.filter(a => {
+                                if (jevHandledIds.has(a.id)) return false;
+                                const targetEl = domState.find(e => e.id === a.id);
+                                if (targetEl && (targetEl.type === 'radio' || targetEl.role === 'radio') && targetEl.name) {
+                                    if (jevHandledRadioNames.has(targetEl.name)) return false;
+                                }
+                                // For select elements, if Jev didn't handle it, we allow Gemini to try
                                 return true;
                             });
                         }

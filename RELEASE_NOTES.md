@@ -1,5 +1,14 @@
 # Release Notes
 
+## v1.3.17
+**Release Date:** September 29, 2026
+
+### Bug Fixes & Improvements
+- **Hidden Radio & Checkbox Support:** Greatly improved the `dom-extractor.js` to correctly locate and extract context for visually hidden native radio buttons and checkboxes (e.g. `opacity: 0`, `left: -9999px`) used extensively in modern ATS wizards like iCIMS and LinkedIn Easy Apply.
+- **Smart Gemini Fallback:** Modified the action filtering logic so that Gemini is now permitted to answer binary questions (Yes/No) as a smart fallback if the Jev System One model was too uncertain to click them based on the CV.
+- **Native Click Fallback:** Implemented a robust JavaScript native `el.click()` fallback in Playwright to guarantee that elements which are out-of-viewport or technically "hidden" by CSS can still be interacted with without throwing exceptions.
+- **Testing Coverage:** Added isolated test suites (`test-linkedin-radios.js`) to prevent future regressions in handling hidden elements and extracting complex question contexts.
+
 ## v1.3.16
 **Release Date:** September 29, 2026
 

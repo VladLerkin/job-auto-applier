@@ -35,7 +35,8 @@ async function askJev(client, cvText, profileText, binaryFields) {
         const questions = {};
         
         binaryFields.forEach(el => {
-            if (el.context && !el.checked && !el.value) { // Ensure it's not already filled
+            const isAlreadySelected = el.tag === 'select' ? (el.text && el.text.length > 0 && !el.text.toLowerCase().includes('select')) : el.checked;
+            if (el.context && !isAlreadySelected) { // Ensure it's not already filled
                 const key = `action_${el.id.replace(/-/g, '_')}`;
                 if (el.tag === 'select') {
                     // options are already an array of strings from dom-extractor
@@ -43,9 +44,9 @@ async function askJev(client, cvText, profileText, binaryFields) {
                     optionTexts.push("Skip");
                     questions[key] = choice(`Which option accurately describes the user for the field: "${el.context}"?`, optionTexts);
                 } else {
-                    const optionText = el.label || el.value || '';
+                    const optionText = el.label || el.value || el.text || '';
                     const optionStr = optionText ? ` Option: "${optionText}".` : '';
-                    questions[key] = noul(`Is it factually correct to select this checkbox/radio button for this user based on their CV? Field context: "${el.context}".${optionStr}`);
+                    questions[key] = choice(`Should this checkbox/radio button be selected? Consider the user's CV and Preferences. IMPORTANT: For general consent, agreement, acknowledgment, legal, or terms & conditions checkboxes, ALWAYS select "Yes". Field context: "${el.context}".${optionStr}`, ["Yes", "No"]);
                 }
             }
         });
@@ -62,7 +63,7 @@ async function askJev(client, cvText, profileText, binaryFields) {
                             console.log(`✅ Jev chose dropdown: "${res.choice}" for "${el.context.substring(0, 40)}..."`);
                         }
                     } else {
-                        if (res.noul > 0.6) {
+                        if (res.choice === "Yes" && res.confidence > 0.4) {
                             jevActions.push({ action: 'click', id: el.id, value: el.context });
                             console.log(`✅ Jev clicked checkbox/radio: "${el.context.substring(0, 40)}..."`);
                         }
