@@ -98,7 +98,7 @@ A local Express server that drives browser automation via Playwright.
 | `gemini.js` | Gemini API wrapper: `askGemini()` for JSON responses, `generateCoverLetterText()` for cover letters |
 | `jev.js` | TypeSafe AI SDK wrapper: `askJev()` for routing and processing binary/choice fields via System One |
 | `dom-extractor.js` | `extractDOM()` — injected into browser pages via `page.evaluate()`, traverses DOM including Shadow DOM, returns structured field descriptors |
-| `form-filler.js` | Core agent loop (10 steps max) implementing **Hybrid Routing**: extracts DOM → delegates binary/choice fields to Jev (TypeSafe) → filters handled fields to save tokens → delegates remaining complex fields to Gemini → executes merged actions. |
+| `form-filler.js` | Core agent loop (10 steps max) implementing **Concurrent Hybrid Routing**: extracts DOM → delegates binary/choice fields to Jev (TypeSafe) AND complex fields to Gemini in parallel → executes Jev actions instantly upon completion → filters Jev-handled actions from Gemini results → executes remaining Gemini actions with near-zero artificial delays. |
 | `file-handlers.js` | PDF resume upload, "Autofill from resume" detection, cover letter text area detection, cover letter PDF generation (pdfkit) |
 | `browser.js` | Chrome launch (platform-aware), CDP connection via Playwright |
 | `logger.js` | Simple `logToFile()` utility — appends timestamped messages to `agent.log` |
@@ -119,10 +119,12 @@ A local Express server that drives browser automation via Playwright.
    c. Handles cover letter (textarea or PDF upload)
 6. form-filler.js runs 10-step loop:
    a. dom-extractor.js extracts current DOM state
-   b. ROUTING: Passes simple choice/binary fields to Jev System One for instant decisions
-   c. TOKEN OPTIMIZATION: Removes Jev-handled fields from domState to save tokens
-   d. ROUTING: Builds prompt with remaining domState and calls Gemini API
-   e. Merges actions from Jev and Gemini and executes them (fill, click, selectOption, etc.)
+   b. ROUTING (CONCURRENT): 
+      - Passes simple choice/binary fields to Jev System One
+      - Passes the entire domState to Gemini API (complex fields)
+   c. Executes Jev actions instantly as soon as the Jev promise resolves
+   d. Waits for Gemini to resolve, filters out Gemini's actions for Jev-handled fields to avoid conflicts
+   e. Executes remaining Gemini actions (fill, selectOption) with near-zero artificial delays for lightning-fast typing
    f. Repeats until done or max steps reached
 7. server.js returns JSON response to extension
 ```

@@ -11,11 +11,12 @@ See what's new in the [Release Notes](RELEASE_NOTES.md). | [Architecture & Desig
 The project consists of two main parts:
 
 1. **Chrome Extension (Client Side):** A classic Google Chrome extension (HTML, CSS, JavaScript). It acts as the user interface for managing the process and settings.
-2. **Node.js Server (Agent):** A local server using Express, `playwright` for browser automation, and `@google/genai` for integration with Google's AI (Gemini).
+2. **Node.js Server (Agent):** A local server using Express, `playwright` for browser automation, and a dual-AI setup integrating Google's AI (Gemini) and TypeSafe AI (Jev) for instant guardrails.
 
 ## Key Features
 
-- **Autonomous Playwright Agent:** Uses CDP and Playwright to navigate complex shadow DOMs, iframe contexts (e.g., Greenhouse, Workable), and dynamically interact with forms exactly like a human would.
+- **Autonomous Playwright Agent:** Uses CDP and Playwright to navigate complex shadow DOMs, iframe contexts (e.g., Greenhouse, Workable), and dynamically interact with forms.
+- **Concurrent Hybrid Routing (Lightning Fast):** Automatically routes complex text fields to Gemini and simple yes/no/dropdown choices to TypeSafe AI (Jev System One). Both are processed in parallel, resulting in lightning-fast, near-instant form filling with zero artificial typing delays.
 - **Local PDF Parsing & AI Structuring:** Securely parses your PDF resume locally. Optionally uses Gemini AI to structure the raw text perfectly for job applications via an intuitive confirmation UI.
 - **Secure Export & Smart Import:** Easily backup your configuration (including the PDF file itself) to a JSON file. When importing, use a sleek modal to selectively choose which settings to restore.
 - **Smart Field Skipping:** Respects fields already filled out by platforms like LinkedIn Easy Apply to avoid overwriting correct data.
@@ -43,6 +44,7 @@ All agent control is performed through the popup window of the installed Chrome 
 The extension has a **Settings** tab where you can configure the following parameters:
 
 - **Gemini API Key:** Your access key for the Gemini API.
+- **TypeSafe API Key (Optional):** Your access key for TypeSafe AI (Jev) for instant checkboxes and dropdown selections.
 - **Model Name:** The AI model to use (default is `gemini-3.8-flash`).
 - **Your Profile / Preferences:** Any additional information that is not in your resume but is frequently asked in application forms. For example: whether you need visa sponsorship, expected salary, race/ethnicity, veteran status, disability status, preferred work format (remote/hybrid/on-site), seniority level, etc.
 - **Your CV / Resume Text:** The text of your resume. You can paste it manually or upload it as a PDF — the text will be extracted automatically.

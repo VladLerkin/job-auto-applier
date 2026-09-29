@@ -29,6 +29,24 @@ async function runTest() {
             context: "Will you require visa sponsorship now or in the future?"
         },
         {
+            id: "radio-auth-yes",
+            tag: "input",
+            type: "radio",
+            checked: false,
+            value: "",
+            label: "Yes",
+            context: "Do you have a legal right to work in the USA?"
+        },
+        {
+            id: "radio-auth-no",
+            tag: "input",
+            type: "radio",
+            checked: false,
+            value: "",
+            label: "No",
+            context: "Do you have a legal right to work in the USA?"
+        },
+        {
             id: "select-location",
             tag: "select",
             type: "",
