@@ -191,9 +191,15 @@ app.post('/download-model', async (req, res) => {
     const { url, filename } = req.body;
     if (!url || !filename) return res.status(400).json({ error: 'Missing url or filename' });
     
-    const destPath = path.join(__dirname, '..', 'models', filename);
-    if (!fs.existsSync(path.dirname(destPath))) {
-        fs.mkdirSync(path.dirname(destPath), { recursive: true });
+    const modelsDir = path.resolve(__dirname, '..', 'models');
+    const destPath = path.resolve(modelsDir, path.basename(filename));
+
+    if (path.dirname(destPath) !== modelsDir) {
+        return res.status(400).json({ error: 'Invalid filename' });
+    }
+    
+    if (!fs.existsSync(modelsDir)) {
+        fs.mkdirSync(modelsDir, { recursive: true });
     }
     
     if (currentDownload && currentDownload.status === 'downloading') {

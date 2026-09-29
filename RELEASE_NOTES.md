@@ -1,5 +1,11 @@
 # Release Notes
 
+## v1.3.15
+**Release Date:** September 29, 2026
+
+### Security Fixes
+- **Path Traversal Vulnerability (RCE):** Fixed a critical path traversal vulnerability in the `/download-model` endpoint that allowed an attacker to overwrite arbitrary local files (e.g., `~/.zshrc`) by manipulating the `filename` parameter. Implemented secure path resolution using strict directory verification.
+
 ## v1.3.14
 **Release Date:** September 29, 2026
 
