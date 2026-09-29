@@ -111,9 +111,9 @@ async function executeAction(page, action) {
         }, action.value).catch(() => null);
 
         if (optionValue !== null) {
-            try { await targetLocator.selectOption(optionValue, { timeout: 2000 }); selected = true; } catch(e) {}
+            try { await targetLocator.selectOption(optionValue, { force: true, timeout: 2000 }); selected = true; } catch(e) {}
         }
-        if (!selected) await targetLocator.selectOption({ label: action.value }, { timeout: 2000 });
+        if (!selected) await targetLocator.selectOption({ label: action.value }, { force: true, timeout: 2000 });
         await page.waitForTimeout(200);
 
     } else if (action.action === 'selectOption') {
@@ -134,9 +134,9 @@ async function executeAction(page, action) {
             }, action.select).catch(() => null);
 
             if (optionValue !== null) {
-                try { await targetLocator.selectOption(optionValue, { timeout: 2000 }); selected = true; } catch(e) {}
+                try { await targetLocator.selectOption(optionValue, { force: true, timeout: 2000 }); selected = true; } catch(e) {}
             }
-            if (!selected) await targetLocator.selectOption({ label: action.select }, { timeout: 2000 });
+            if (!selected) await targetLocator.selectOption({ label: action.select }, { force: true, timeout: 2000 });
             await page.waitForTimeout(200);
         } else {
             // 1. Click on the element to focus/open it
