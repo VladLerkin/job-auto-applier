@@ -43,7 +43,9 @@ async function askJev(client, cvText, profileText, binaryFields) {
                     optionTexts.push("Skip");
                     questions[key] = choice(`Which option accurately describes the user for the field: "${el.context}"?`, optionTexts);
                 } else {
-                    questions[key] = noul(`Is it factually correct to select this checkbox/radio button for this user based on their CV? Field label: "${el.context}"`);
+                    const optionText = el.label || el.value || '';
+                    const optionStr = optionText ? ` Option: "${optionText}".` : '';
+                    questions[key] = noul(`Is it factually correct to select this checkbox/radio button for this user based on their CV? Field context: "${el.context}".${optionStr}`);
                 }
             }
         });

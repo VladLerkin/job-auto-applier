@@ -477,11 +477,11 @@ async function fillForm(page, { cvText, apiKey, typesafeApiKey, modelName, profi
                             finalGeminiActions = geminiResult.actions.filter(a => {
                                 const targetEl = domState.find(e => e.id === a.id);
                                 if (targetEl) {
-                                    if (a.action === 'click' && targetEl.tag === 'input' && (targetEl.type === 'radio' || targetEl.type === 'checkbox')) {
+                                    if (targetEl.tag === 'input' && (targetEl.type === 'radio' || targetEl.type === 'checkbox')) {
                                         return false; // Handled strictly by Jev
                                     }
-                                    if ((a.action === 'selectNative' || a.action === 'selectOption') && targetEl.tag === 'select') {
-                                        return false; // Handled by Jev choice
+                                    if (targetEl.tag === 'select') {
+                                        return false; // Handled strictly by Jev
                                     }
                                 }
                                 return true;
