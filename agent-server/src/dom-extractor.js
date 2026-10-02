@@ -73,22 +73,31 @@ const extractDOM = (frameId) => {
             }
         }
         if (!labelText) labelText = el.getAttribute('aria-label') || '';
-        if (!labelText) labelText = el.name || '';
         
-        // Fallback for unlabeled textareas or inputs: look at preceding elements
+        // Fallback for unlabeled textareas or inputs: look at preceding nodes
         if (!labelText && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT')) {
-            let node = el.parentElement;
-            for(let i=0; i<5 && node; i++) {
-                if (node.previousElementSibling) {
-                    let txt = (node.previousElementSibling.innerText || node.previousElementSibling.textContent || '').replace(/SVGs not supported by this browser\./g, '').trim();
-                    if (txt && txt.length > 2 && txt.length < 200) {
-                        labelText = txt.split('\n')[0]; // take first line
-                        break;
+            let currentNode = el;
+            let found = false;
+            for (let i = 0; i < 10 && currentNode && !found; i++) {
+                let prev = currentNode.previousSibling;
+                while (prev && !found) {
+                    let txt = (prev.innerText || prev.textContent || '').replace(/SVGs not supported by this browser\./g, '').trim();
+                    if (txt && txt.length > 2 && txt.length < 250) {
+                        const lines = txt.split('\n').map(l => l.trim()).filter(l => l);
+                        if (lines.length > 0) {
+                            labelText = lines[lines.length - 1];
+                            found = true;
+                        }
                     }
+                    prev = prev.previousSibling;
                 }
-                node = node.parentElement;
+                if (!found) {
+                    currentNode = currentNode.parentElement;
+                }
             }
         }
+        
+        if (!labelText) labelText = el.name || '';
         
         let optionsList = [];
         if (el.tagName === 'SELECT') {

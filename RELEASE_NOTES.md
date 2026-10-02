@@ -1,5 +1,13 @@
 # Release Notes
 
+## v1.3.19
+**Release Date:** October 2, 2026
+
+### Bug Fixes & Improvements
+- **Robust Label Extraction:** Completely rewrote the `dom-extractor.js` fallback logic for extracting context for unlabeled textareas and inputs. It now correctly traverses backwards through the DOM tree (including text nodes and adjacent parent elements) to reliably find question texts on poorly structured sites (e.g., Elite Technical).
+- **Attribute Priorities:** Fixed an issue where generic `name` attributes (e.g., `question2106`) were taking precedence over contextual text extraction, causing the agent to hallucinate answers.
+- **Testing Coverage:** Added `test-dom-extractor.js` unit tests using Playwright to ensure the new context extraction logic handles various non-standard HTML form structures.
+
 ## v1.3.18
 **Release Date:** September 29, 2026
 
