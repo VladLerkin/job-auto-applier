@@ -4,6 +4,7 @@ const fs = require('fs');
 const PDFDocument = require('pdfkit');
 const { logToFile } = require('./logger');
 const { generateCoverLetterText } = require('./gemini');
+const { generateCoverLetterWithAgy } = require('./agy');
 
 /**
  * Find a file input element by nearby sibling/ancestor label text.
@@ -251,9 +252,20 @@ async function handleResumeUpload(page, tempPdfPath) {
  * Handle cover letter — either paste into textarea or generate & upload PDF.
  * @returns {string|null} Path to temp cover letter PDF (for cleanup), or null.
  */
-async function handleCoverLetter(page, cvText, profileText, apiKey, modelName) {
+async function handleCoverLetter(page, cvText, profileText, apiKey, modelName, provider = 'gemini', agyModel = null) {
     let coverLetterTempPdf = null;
     try {
+        if (provider !== 'agy' && !apiKey) {
+            logToFile('⚠️ Skipping Cover Letter generation (no API key for non-agy provider)');
+            return null;
+        }
+        const generateCoverLetter = async (jobDesc, maxLength) => {
+            if (provider === 'agy') {
+                return await generateCoverLetterWithAgy(cvText, jobDesc, profileText, agyModel, maxLength);
+            }
+            return await generateCoverLetterText(cvText, jobDesc, profileText, apiKey, modelName, maxLength);
+        };
+
         let jobDescText = await page.evaluate(() => document.body.innerText.slice(0, 4000)).catch(() => '');
         
         const currentUrl = page.url();
@@ -295,7 +307,7 @@ async function handleCoverLetter(page, cvText, profileText, apiKey, modelName) {
 
         if (clTextArea) {
             logToFile(`Cover letter TEXT field detected (maxLength: ${clTextArea.maxLength || 'none'}) — generating text...`);
-            const clText = await generateCoverLetterText(cvText, jobDescText, profileText, apiKey, modelName, clTextArea.maxLength);
+            const clText = await generateCoverLetter(jobDescText, clTextArea.maxLength);
             
             // Save a copy for the user to review
             const workspacePath = path.join(__dirname, '..', 'workspace');
@@ -309,7 +321,7 @@ async function handleCoverLetter(page, cvText, profileText, apiKey, modelName) {
             logToFile('✅ Cover letter text pasted into text area');
         } else if (clFileInput) {
             logToFile('Cover letter FILE input detected — generating cover letter PDF...');
-            const clText = await generateCoverLetterText(cvText, jobDescText, profileText, apiKey, modelName);
+            const clText = await generateCoverLetter(jobDescText);
             
             // Save a copy for the user to review
             const workspacePath = path.join(__dirname, '..', 'workspace');

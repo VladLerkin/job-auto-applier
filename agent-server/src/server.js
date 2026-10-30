@@ -70,13 +70,20 @@ app.post('/fill', async (req, res) => {
     currentStep = 0;
     resetInactivityTimer();
     
-    let { cvText, apiKey, typesafeApiKey, modelName, profileText, tabUrl, cvPdfBase64, cvPdfName, provider, localModelPath } = req.body;
+    let { cvText, apiKey, typesafeApiKey, modelName, profileText, tabUrl, cvPdfBase64, cvPdfName, provider, localModelPath, agyModel } = req.body;
+    provider = provider || 'gemini';
     
-    if (provider === 'gemini' && (!cvText || !apiKey)) {
-        return res.status(400).json({ error: 'Missing cvText or apiKey' });
+    if (!cvText) {
+        isFilling = false;
+        return res.status(400).json({ error: 'Missing cvText' });
     }
-    if (provider === 'local' && (!cvText || !localModelPath)) {
-        return res.status(400).json({ error: 'Missing cvText or localModelPath' });
+    if (provider === 'gemini' && !apiKey) {
+        isFilling = false;
+        return res.status(400).json({ error: 'Missing apiKey' });
+    }
+    if (provider === 'local' && !localModelPath) {
+        isFilling = false;
+        return res.status(400).json({ error: 'Missing localModelPath' });
     }
 
     if (provider === 'local' && localModelPath && !path.isAbsolute(localModelPath)) {
@@ -134,7 +141,7 @@ app.post('/fill', async (req, res) => {
         }
 
         // ── Handle Cover Letter ─────────────────────────────────────────────
-        coverLetterTempPdf = await handleCoverLetter(page, cvText, profileText, apiKey, modelName);
+        coverLetterTempPdf = await handleCoverLetter(page, cvText, profileText, apiKey, modelName, provider, agyModel);
 
         // ── Main form-filling loop ──────────────────────────────────────────
         const result = await fillForm(page, {
@@ -143,8 +150,9 @@ app.post('/fill', async (req, res) => {
             typesafeApiKey,
             modelName,
             profileText,
-            provider: provider || 'gemini',
+            provider,
             localModelPath,
+            agyModel,
             maxSteps: MAX_STEPS,
             isCancelledFn: () => isCancelled,
             onProgress: (step, total) => {
@@ -183,9 +191,40 @@ app.post('/fill', async (req, res) => {
     }
 });
 
-// ── Local LLM Management Endpoints ──────────────────────────────────────────
+// ── Local LLM & Antigravity CLI Management Endpoints ────────────────────────
 const { downloadModel, askLocalLLM } = require('./local-llm');
+const { askAgy, askAgyText, listAgyModels } = require('./agy');
 let currentDownload = null;
+
+app.get('/agy-models', async (req, res) => {
+    try {
+        const models = await listAgyModels();
+        res.json({ success: true, models });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/test-agy', async (req, res) => {
+    const { agyModel } = req.body || {};
+    try {
+        const result = await askAgy('Respond strictly with this exact JSON: {"success": true}', agyModel);
+        res.json({ success: true, result });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/structure-cv', async (req, res) => {
+    const { prompt, agyModel } = req.body || {};
+    if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
+    try {
+        const text = await askAgyText(prompt, agyModel);
+        res.json({ success: true, text });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 app.post('/download-model', async (req, res) => {
     const { url, filename } = req.body;

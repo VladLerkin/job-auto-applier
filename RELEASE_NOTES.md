@@ -1,5 +1,13 @@
 # Release Notes
 
+## v1.3.20
+**Release Date:** October 30, 2026
+
+### Features & Improvements
+- **Antigravity CLI (`agy`) Provider Support:** Added a new AI provider option to route LLM requests through the local Antigravity CLI (`agy`) in non-interactive print mode (`-p`), allowing users to fill job forms, generate cover letters, and structure CVs without needing a separate Gemini API key.
+- **Provider & Model Selection in Settings:** Updated the Chrome Extension settings UI to let users choose `Antigravity CLI (agy)`, select or dynamically refresh available models via `agy models`, and test CLI connectivity directly from the popup.
+- **Settings Export & Import:** Included `aiProvider` and `agyModel` in settings export/import backups.
+
 ## v1.3.19
 **Release Date:** October 2, 2026
 

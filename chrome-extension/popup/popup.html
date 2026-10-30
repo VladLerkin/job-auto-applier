@@ -15,8 +15,19 @@
   </div>
 
   <div id="generator-tab" class="tab-content active">
-    <button id="generate-btn" class="primary-btn">🚀 Fill Application Form</button>
+    <div id="bad-board-alert" class="hidden" style="margin-bottom: 12px; padding: 10px 12px; background: #7f1d1d; color: #ffffff; border: 2px solid #ef4444; border-radius: 8px; font-size: 13px; line-height: 1.4; word-break: break-word; overflow-wrap: anywhere;">
+      <div style="font-weight: 700; margin-bottom: 4px;">⛔ СТОП: В черном списке (<code id="bad-board-domain" style="background:#991b1b;padding:1px 5px;border-radius:4px;">cims.com</code>)!</div>
+      <div id="bad-board-reason" style="font-size: 12px; color: #fecaca; margin-bottom: 8px;">Форму невозможно нормально заполнить. Автозаполнение заблокировано.</div>
+      <button id="unban-board-btn" type="button" style="width: 100%; padding: 5px 8px; background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.35); border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer;">
+        ↩ Убрать домен из ЧС и разблокировать
+      </button>
+    </div>
+
+    <button id="generate-btn" class="primary-btn" style="word-break: break-word;">🚀 Fill Application Form</button>
     <button id="stop-btn" class="danger-btn hidden">🛑 Stop Agent</button>
+    <button id="ban-board-btn" class="secondary-btn" style="width: 100%; margin-top: 8px; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; font-size: 12px; font-weight: 600; word-break: break-word;">
+      ⛔ Добавить в черный список
+    </button>
     <div id="loading" class="hidden">
       <div class="spinner"></div>
       <span id="loading-text">Agent is filling the form... This may take 1-2 minutes.</span>
@@ -39,6 +50,7 @@
     <label for="ai-provider">AI Provider:</label>
     <select id="ai-provider" style="width:100%; margin-bottom:12px; padding:8px; border:1px solid #d1d5db; border-radius:6px;">
       <option value="gemini">Google Gemini (Cloud)</option>
+      <option value="agy">Antigravity CLI (agy)</option>
       <option value="local">Local Model (Free / node-llama-cpp)</option>
     </select>
 
@@ -48,6 +60,31 @@
       
       <label for="model-name">Gemini Model Name:</label>
       <input type="text" id="model-name" placeholder="e.g., gemini-3.8-flash" value="gemini-3.8-flash">
+    </div>
+
+    <div id="agy-settings" class="hidden" style="padding:10px; background:#f5f3ff; border:1px solid #ddd6fe; border-radius:6px; margin-bottom:12px;">
+      <label for="agy-model" style="font-size:13px; font-weight:500; color:#5b21b6;">Antigravity CLI Model:</label>
+      <select id="agy-model" style="width:100%; margin-top:4px; margin-bottom:8px; padding:8px; border:1px solid #c4b5fd; border-radius:6px; background:#fff;">
+        <option value="gemini-3.8-flash-medium">Gemini 3.8 Flash (Medium)</option>
+        <option value="gemini-3.8-flash-high">Gemini 3.8 Flash (High)</option>
+        <option value="gemini-3.8-flash-low">Gemini 3.8 Flash (Low)</option>
+        <option value="gemini-4-argon-medium">Gemini 4 Argon (Medium)</option>
+        <option value="gemini-4-argon-high">Gemini 4 Argon (High)</option>
+        <option value="gemini-4-argon-low">Gemini 4 Argon (Low)</option>
+        <option value="claude-sonnet-5-5-medium">Claude Sonnet 5.5 (Medium)</option>
+        <option value="claude-sonnet-5-5-high">Claude Sonnet 5.5 (High)</option>
+        <option value="claude-sonnet-5-5-low">Claude Sonnet 5.5 (Low)</option>
+        <option value="claude-opus-5-5-medium">Claude Opus 5.5 (Medium)</option>
+        <option value="claude-opus-5-5-high">Claude Opus 5.5 (High)</option>
+        <option value="claude-opus-5-5-low">Claude Opus 5.5 (Low)</option>
+        <option value="gpt-oss-120b-medium">GPT-OSS 120B (Medium)</option>
+      </select>
+      <div style="font-size: 11px; color: #6d28d9; margin-bottom: 8px;">Uses your local <code>agy</code> CLI session (no API key required).</div>
+      <div style="display: flex; gap: 8px;">
+        <button id="refresh-agy-models-btn" class="secondary-btn" style="flex: 1; padding: 6px;">🔄 Refresh Models</button>
+        <button id="test-agy-btn" class="primary-btn" style="flex: 1; padding: 6px;">⚙️ Test Agy CLI</button>
+      </div>
+      <div id="test-agy-status" style="font-size:13px; margin-top:8px; font-weight:500;"></div>
     </div>
 
     <div id="local-settings" class="hidden" style="padding:10px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; margin-bottom:12px;">

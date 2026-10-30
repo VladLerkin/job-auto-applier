@@ -3,7 +3,7 @@
 [ -f ~/.bash_profile ] && source ~/.bash_profile
 [ -f ~/.zshrc ] && source ~/.zshrc
 [ -s "$HOME/.nvm/nvm.sh" ] && source "$HOME/.nvm/nvm.sh"
-export PATH=$PATH:/opt/homebrew/bin:/usr/local/bin
+export PATH=$PATH:/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$HOME/.gemini/antigravity/bin
 
 echo "🚀 Starting AI Agent Server..."
 

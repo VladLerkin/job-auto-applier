@@ -1,11 +1,127 @@
+const JOB_FILTER_API = 'http://localhost:8000';
+const DEFAULT_BAD_DOMAINS = ['cims.com', 'icims.com'];
+
+function extractSimpleDomain(urlOrDomain) {
+  if (!urlOrDomain) return '';
+  try {
+    const raw = urlOrDomain.includes('://') ? urlOrDomain : 'https://' + urlOrDomain;
+    const host = new URL(raw).hostname.toLowerCase().replace(/^www\./, '');
+    if (host.endsWith('.icims.com') || host === 'icims.com') return 'icims.com';
+    if (host.endsWith('.cims.com') || host === 'cims.com') return 'cims.com';
+    const parts = host.split('.');
+    if (parts.length >= 2) return parts.slice(-2).join('.');
+    return host;
+  } catch (_) {
+    return '';
+  }
+}
+
+async function checkBlacklistWithServer(url, frames = []) {
+  const allUrls = [url, ...(frames || [])].filter(Boolean);
+  let stored = {};
+  try {
+    stored = await chrome.storage.local.get(['badBoards']);
+  } catch (_) {}
+  const localDomains = Array.from(new Set([...DEFAULT_BAD_DOMAINS, ...(stored.badBoards || [])]));
+
+  try {
+    const params = new URLSearchParams({
+      url: url || '',
+      frames: (frames || []).join(','),
+      auto_link: 'true'
+    });
+    const res = await fetch(`${JOB_FILTER_API}/api/blacklist/check?${params.toString()}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.all_blacklisted_domains)) {
+        const merged = Array.from(new Set([...DEFAULT_BAD_DOMAINS, ...data.all_blacklisted_domains]));
+        await chrome.storage.local.set({ badBoards: merged });
+      }
+      return data;
+    }
+  } catch (_) {
+    // Сервер Job Filter (localhost:8000) не запущен — проверяем по локальному списку в chrome.storage.local
+  }
+
+  for (const u of allUrls) {
+    try {
+      const host = new URL(u).hostname.toLowerCase().replace(/^www\./, '');
+      for (const bad of localDomains) {
+        const b = bad.toLowerCase();
+        if (b.startsWith('company:')) continue;
+        if (host === b || host.endsWith('.' + b)) {
+          return {
+            is_blacklisted: true,
+            matched_domain: b,
+            reason: 'В чёрном списке (локальный кэш расширения)',
+            hit_url: u
+          };
+        }
+      }
+    } catch (_) {}
+  }
+
+  return { is_blacklisted: false, matched_domain: null };
+}
+
+async function addDomainToBlacklist(domainOrUrl, reason = 'Невозможно заполнить форму (в чёрном списке)') {
+  const dom = extractSimpleDomain(domainOrUrl) || domainOrUrl;
+  let stored = {};
+  try {
+    stored = await chrome.storage.local.get(['badBoards']);
+  } catch (_) {}
+  const updated = Array.from(new Set([...DEFAULT_BAD_DOMAINS, ...(stored.badBoards || []), dom].filter(Boolean)));
+  await chrome.storage.local.set({ badBoards: updated });
+
+  try {
+    const res = await fetch(`${JOB_FILTER_API}/api/blacklist`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        domain_or_url: domainOrUrl,
+        reason,
+        hide_job: true,
+        use_last_opened: true
+      })
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (_) {}
+  return { added: { domain: dom, reason } };
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'generate') {
     handleGenerate(request.payload)
       .then(text => sendResponse({ success: true, text }))
       .catch(err => sendResponse({ success: false, error: err.message }));
-    
-    // Return true to indicate we will send a response asynchronously
-    return true; 
+    return true;
+  }
+
+  if (request.action === 'checkBlacklist') {
+    checkBlacklistWithServer(request.url, request.frames)
+      .then(res => sendResponse(res))
+      .catch(() => sendResponse({ is_blacklisted: false }));
+    return true;
+  }
+
+  if (request.action === 'addBlacklistFromPopup') {
+    addDomainToBlacklist(request.domainOrUrl, request.reason)
+      .then(res => sendResponse({ success: true, ...res }))
+      .catch(err => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (request.action === 'banAndCloseTab') {
+    addDomainToBlacklist(request.matchedDomain || request.domainOrUrl)
+      .finally(() => {
+        if (sender && sender.tab && sender.tab.id) {
+          chrome.tabs.remove(sender.tab.id);
+        }
+      });
+    sendResponse({ ok: true });
+    return true;
   }
 });
 

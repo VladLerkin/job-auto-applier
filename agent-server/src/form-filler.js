@@ -3,6 +3,7 @@ const path = require('path');
 const { logToFile } = require('./logger');
 const { askGemini } = require('./gemini');
 const { askLocalLLM } = require('./local-llm');
+const { askAgy } = require('./agy');
 const { extractDOM } = require('./dom-extractor');
 const { initJev, askJev } = require('./jev');
 
@@ -367,10 +368,10 @@ OR when finished:
 /**
  * Run the main 15-step form-filling loop.
  * @param {Object} page - Playwright page object
- * @param {Object} options - { cvText, apiKey, modelName, profileText, isCancelledFn, provider, localModelPath }
+ * @param {Object} options - { cvText, apiKey, modelName, profileText, isCancelledFn, provider, localModelPath, agyModel }
  * @returns {Object} { success, allActions, message }
  */
-async function fillForm(page, { cvText, apiKey, typesafeApiKey, modelName, profileText, isCancelledFn, provider = 'gemini', localModelPath = null, maxSteps = 10, onProgress }) {
+async function fillForm(page, { cvText, apiKey, typesafeApiKey, modelName, profileText, isCancelledFn, provider = 'gemini', localModelPath = null, agyModel = null, maxSteps = 10, onProgress }) {
     let allActions = [];
     let completedEntries = [];
     let previousErrors = [];
@@ -462,9 +463,11 @@ async function fillForm(page, { cvText, apiKey, typesafeApiKey, modelName, profi
             // but we filter them out from the results later).
             const prompt = buildPrompt(step, maxSteps, cvText, profileText, domState, errorPrompt, actionSummary);
             if (!(tsClient && actionableTextFields.length === 0 && binaryFields.length > 0)) {
-                console.log(`🧠 Calling Gemini for complex fields and page analysis...`);
+                console.log(`🧠 Calling LLM (${provider}) for complex fields and page analysis...`);
                 if (provider === 'local') {
                     geminiPromise = askLocalLLM(prompt, localModelPath);
+                } else if (provider === 'agy') {
+                    geminiPromise = askAgy(prompt, agyModel);
                 } else {
                     geminiPromise = askGemini(prompt, apiKey, modelName);
                 }
