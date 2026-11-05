@@ -1,5 +1,13 @@
 # Release Notes
 
+## v1.3.21
+**Release Date:** November 6, 2026
+
+### Bug Fixes & Improvements
+- **Search Aggregator & Captcha Protection:** Added a protected domain filter covering search aggregators (LinkedIn, Hirify, Indeed, Glassdoor) and captcha/utility providers (hCaptcha, reCAPTCHA, Cloudflare challenges, Arkose Labs, etc.).
+- **False-Positive Blacklist Prevention:** Background worker and content detector now ignore protected domains when extracting iframe URLs and matching blacklist rules, preventing job search aggregators or captcha frames from triggering ATS domain blocks.
+- **Popup Blacklist Validation:** Updated the popup blacklist input with validation preventing users from accidentally blacklisting aggregator domains, showing an informative guidance message.
+
 ## v1.3.20
 **Release Date:** October 30, 2026
 

@@ -9,6 +9,33 @@
 
   const JOB_FILTER_API = 'http://localhost:8000';
   const IGNORED_HOSTS = ['localhost', '127.0.0.1'];
+  const CAPTCHA_AND_UTILITY_DOMAINS = [
+    'hcaptcha.com',
+    'recaptcha.net',
+    'google.com',
+    'gstatic.com',
+    'cloudflare.com',
+    'challenges.cloudflare.com',
+    'arkoselabs.com',
+    'geetest.com',
+    'doubleclick.net',
+    'googletagmanager.com'
+  ];
+  const SEARCH_AGGREGATOR_DOMAINS = [
+    'linkedin.com',
+    'hirify.me',
+    'indeed.com',
+    'glassdoor.com'
+  ];
+
+  function isProtectedDomain(host) {
+    if (!host) return false;
+    const h = host.toLowerCase();
+    if (CAPTCHA_AND_UTILITY_DOMAINS.some(c => h === c || h.endsWith('.' + c))) return true;
+    if (SEARCH_AGGREGATOR_DOMAINS.some(s => h === s || h.endsWith('.' + s))) return true;
+    if (/(^|\.)(linkedin|hirify|indeed|glassdoor)\.[a-z.]+$/.test(h)) return true;
+    return false;
+  }
   const DEFAULT_BAD_DOMAINS = ['cims.com', 'icims.com'];
   const MULTI_TENANT_ATS = [
     'icims.com', 'cims.com', 'myworkdayjobs.com', 'workday.com',
@@ -20,7 +47,7 @@
   ];
 
   const currentHost = (window.location.hostname || '').toLowerCase().replace(/^www\./, '');
-  if (!currentHost || IGNORED_HOSTS.some(h => currentHost === h || currentHost.endsWith('.' + h))) {
+  if (!currentHost || IGNORED_HOSTS.some(h => currentHost === h || currentHost.endsWith('.' + h)) || isProtectedDomain(currentHost)) {
     return;
   }
 
@@ -30,7 +57,7 @@
       const raw = urlOrDomain.includes('://') ? urlOrDomain : 'https://' + urlOrDomain;
       const u = new URL(raw);
       const host = (u.hostname || '').toLowerCase().replace(/^www\./, '');
-      if (!host) return '';
+      if (!host || isProtectedDomain(host)) return '';
       for (const ats of MULTI_TENANT_ATS) {
         if (host === ats || host.endsWith('.' + ats)) return ats;
       }
@@ -52,7 +79,10 @@
     document.querySelectorAll('iframe[src]').forEach(iframe => {
       const src = iframe.getAttribute('src') || iframe.src;
       if (src && src.startsWith('http')) {
-        urls.push(src);
+        const dom = extractCleanDomain(src);
+        if (dom && !isProtectedDomain(dom)) {
+          urls.push(src);
+        }
       }
     });
     return urls;
@@ -60,14 +90,18 @@
 
   function matchLocalDomains(urls, badDomains) {
     const cleanBadList = Array.from(
-      new Set([...DEFAULT_BAD_DOMAINS, ...(badDomains || [])].map(d => extractCleanDomain(d)).filter(Boolean))
+      new Set(
+        [...DEFAULT_BAD_DOMAINS, ...(badDomains || [])]
+          .map(d => extractCleanDomain(d))
+          .filter(d => d && !isProtectedDomain(d))
+      )
     );
     if (cleanBadList.includes('cims.com') && !cleanBadList.includes('icims.com')) cleanBadList.push('icims.com');
     if (cleanBadList.includes('icims.com') && !cleanBadList.includes('cims.com')) cleanBadList.push('cims.com');
 
     for (const rawUrl of urls) {
       const dom = extractCleanDomain(rawUrl);
-      if (dom && cleanBadList.includes(dom)) {
+      if (dom && cleanBadList.includes(dom) && !isProtectedDomain(dom)) {
         return { domain: dom, hitUrl: rawUrl };
       }
     }

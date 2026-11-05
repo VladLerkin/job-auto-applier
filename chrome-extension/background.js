@@ -1,11 +1,42 @@
 const JOB_FILTER_API = 'http://localhost:8000';
 const DEFAULT_BAD_DOMAINS = ['cims.com', 'icims.com'];
+const CAPTCHA_AND_UTILITY_DOMAINS = [
+  'hcaptcha.com',
+  'recaptcha.net',
+  'google.com',
+  'gstatic.com',
+  'cloudflare.com',
+  'challenges.cloudflare.com',
+  'arkoselabs.com',
+  'geetest.com',
+  'doubleclick.net',
+  'googletagmanager.com'
+];
+
+const SEARCH_AGGREGATOR_DOMAINS = [
+  'linkedin.com',
+  'hirify.me',
+  'indeed.com',
+  'glassdoor.com'
+];
+
+function isProtectedDomain(host) {
+  if (!host) return false;
+  const h = host.toLowerCase();
+  if (CAPTCHA_AND_UTILITY_DOMAINS.some(c => h === c || h.endsWith('.' + c))) return true;
+  if (SEARCH_AGGREGATOR_DOMAINS.some(s => h === s || h.endsWith('.' + s))) return true;
+  if (/(^|\.)(linkedin|hirify|indeed|glassdoor)\.[a-z.]+$/.test(h)) return true;
+  return false;
+}
 
 function extractSimpleDomain(urlOrDomain) {
   if (!urlOrDomain) return '';
   try {
     const raw = urlOrDomain.includes('://') ? urlOrDomain : 'https://' + urlOrDomain;
     const host = new URL(raw).hostname.toLowerCase().replace(/^www\./, '');
+    if (isProtectedDomain(host)) {
+      return '';
+    }
     if (host.endsWith('.icims.com') || host === 'icims.com') return 'icims.com';
     if (host.endsWith('.cims.com') || host === 'cims.com') return 'cims.com';
     const parts = host.split('.');
@@ -22,7 +53,8 @@ async function checkBlacklistWithServer(url, frames = []) {
   try {
     stored = await chrome.storage.local.get(['badBoards']);
   } catch (_) {}
-  const localDomains = Array.from(new Set([...DEFAULT_BAD_DOMAINS, ...(stored.badBoards || [])]));
+  const localDomains = Array.from(new Set([...DEFAULT_BAD_DOMAINS, ...(stored.badBoards || [])]))
+    .filter(d => !isProtectedDomain(d));
 
   try {
     const params = new URLSearchParams({

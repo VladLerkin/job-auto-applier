@@ -597,6 +597,33 @@ ${rawText}`;
 
   const JOB_FILTER_API = 'http://localhost:8000';
   const DEFAULT_BAD_DOMAINS = ['cims.com', 'icims.com'];
+  const CAPTCHA_AND_UTILITY_DOMAINS = [
+    'hcaptcha.com',
+    'recaptcha.net',
+    'google.com',
+    'gstatic.com',
+    'cloudflare.com',
+    'challenges.cloudflare.com',
+    'arkoselabs.com',
+    'geetest.com',
+    'doubleclick.net',
+    'googletagmanager.com'
+  ];
+  const SEARCH_AGGREGATOR_DOMAINS = [
+    'linkedin.com',
+    'hirify.me',
+    'indeed.com',
+    'glassdoor.com'
+  ];
+
+  function isProtectedDomain(host) {
+    if (!host) return false;
+    const h = host.toLowerCase();
+    if (CAPTCHA_AND_UTILITY_DOMAINS.some(c => h === c || h.endsWith('.' + c))) return true;
+    if (SEARCH_AGGREGATOR_DOMAINS.some(s => h === s || h.endsWith('.' + s))) return true;
+    if (/(^|\.)(linkedin|hirify|indeed|glassdoor)\.[a-z.]+$/.test(h)) return true;
+    return false;
+  }
   const MULTI_TENANT_ATS = [
     'icims.com', 'cims.com', 'myworkdayjobs.com', 'workday.com',
     'taleo.net', 'successfactors.com', 'successfactors.eu',
@@ -615,7 +642,7 @@ ${rawText}`;
       const raw = urlOrDomain.includes('://') ? urlOrDomain : 'https://' + urlOrDomain;
       const u = new URL(raw);
       const host = (u.hostname || '').toLowerCase().replace(/^www\./, '');
-      if (!host) return '';
+      if (!host || isProtectedDomain(host)) return '';
       for (const ats of MULTI_TENANT_ATS) {
         if (host === ats || host.endsWith('.' + ats)) return ats;
       }
@@ -792,8 +819,8 @@ ${rawText}`;
         } catch (_) {}
 
         const cleanDom = extractCleanDomain(targetUrl);
-        if (!cleanDom || ['localhost', '127.0.0.1'].includes(cleanDom)) {
-          errorMsg.textContent = 'Нельзя добавить локальный адрес в чёрный список.';
+        if (!cleanDom || ['localhost', '127.0.0.1'].includes(cleanDom) || isProtectedDomain(cleanDom)) {
+          errorMsg.textContent = 'Поисковые агрегаторы (LinkedIn, Hirify, Indeed, Glassdoor) нельзя блокировать. Заблокируй компанию или перейди на сайт ATS.';
           errorMsg.classList.remove('hidden');
           return;
         }
