@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "test": "npm --prefix agent-server test"
+  },
   "dependencies": {
     "jsdom": "^30.1.1"
   }

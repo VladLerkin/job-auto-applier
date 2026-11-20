@@ -1,5 +1,12 @@
 # Release Notes
 
+## v1.3.22
+**Release Date:** November 20, 2026
+
+### Testing & Developer Experience
+- **Native `npm test` Runner:** Migrated isolated headless tests (`date-logic`, `dom-extractor`, `file-handlers`, `linkedin-radios`) to Node's built-in `node:test` and `node:assert/strict` framework under `agent-server/tests/unit/`.
+- **Root & Server Test Scripts:** Added `"test"` scripts to both root `package.json` and `agent-server/package.json` so all automated tests can be run with a single `npm test` command without extra dependencies or hitting live external sites.
+
 ## v1.3.21
 **Release Date:** November 6, 2026
 
